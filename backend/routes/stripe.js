@@ -22,6 +22,7 @@ const pool     = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
+const webhookRouter = express.Router();
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STRIPE_KEY            = process.env.STRIPE_SECRET_KEY     || '';
@@ -208,9 +209,7 @@ router.post('/portal', authenticate, async (req, res) => {
 });
 
 // ─── POST /stripe/webhook ─────────────────────────────────────────────────────
-// ⚠️  Ce endpoint reçoit le body RAW (Buffer) — ne pas passer par express.json()
-// Monté dans server.js AVANT express.json() avec express.raw({ type: '*/*' })
-router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+async function handleStripeWebhook(req, res) {
   const sig = req.headers['stripe-signature'];
 
   if (!STRIPE_WEBHOOK_SECRET) {
@@ -318,6 +317,12 @@ router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
   }
 
   res.json({ received: true });
-});
+}
+
+// ⚠️  Ce endpoint reçoit le body RAW (Buffer) — ne pas passer par express.json()
+// Monté dans server.js AVANT express.json() avec express.raw({ type: '*/*' })
+webhookRouter.post('/', express.raw({ type: '*/*' }), handleStripeWebhook);
+router.post('/webhook', express.raw({ type: '*/*' }), handleStripeWebhook);
 
 module.exports = router;
+module.exports.webhookRouter = webhookRouter;

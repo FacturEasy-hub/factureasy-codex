@@ -111,11 +111,13 @@ app.use(cors({
   credentials: true,
 }));
 
+const stripeRoutes = require('./routes/stripe');
 // ⚠️  /stripe/webhook doit être monté AVANT express.json()
 // car il a besoin du body brut pour vérifier la signature Stripe
-app.use('/stripe', require('./routes/stripe'));
+app.use('/stripe/webhook', stripeRoutes.webhookRouter);
 
 app.use(express.json());
+app.use('/stripe', stripeRoutes);
 
 // ─── Chorus Pro OAuth2 ───────────────────────────────────────────────────────
 
