@@ -544,15 +544,23 @@ router.get('/factures', requireAdmin, async (req, res) => {
 router.delete('/entreprises/:siret', requireAdmin, async (req, res) => {
   const { siret } = req.params;
   const client = await pool.connect();
+  const deleteIfTableExists = async (table, column = 'siret') => {
+    const safeTable = String(table).replace(/[^a-zA-Z0-9_]/g, '');
+    const safeColumn = String(column).replace(/[^a-zA-Z0-9_]/g, '');
+    const exists = await client.query('SELECT to_regclass($1) AS table_name', [`public.${safeTable}`]);
+    if (exists.rows[0]?.table_name) {
+      await client.query(`DELETE FROM ${safeTable} WHERE ${safeColumn} = $1`, [siret]);
+    }
+  };
   try {
     const { rows } = await client.query('SELECT id FROM entreprises WHERE siret = $1', [siret]);
     if (!rows[0]) { client.release(); return res.status(404).json({ error: 'Entreprise introuvable' }); }
 
     await client.query('BEGIN');
     await client.query('DELETE FROM factures       WHERE emetteur_siret = $1', [siret]);
-    try { await client.query('DELETE FROM clients         WHERE siret = $1', [siret]); } catch (_) {}
-    try { await client.query('DELETE FROM depenses        WHERE siret = $1', [siret]); } catch (_) {}
-    try { await client.query('DELETE FROM revenus_manuels WHERE siret = $1', [siret]); } catch (_) {}
+    await deleteIfTableExists('clients');
+    await deleteIfTableExists('depenses');
+    await deleteIfTableExists('revenus_manuels');
     await client.query('DELETE FROM entreprises     WHERE siret = $1', [siret]);
     await client.query('COMMIT');
 
