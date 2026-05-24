@@ -950,7 +950,7 @@ function ModalNouvelleFacture({ onClose, onSave }) {
           setSireneHint('SIRET trouvé mais nom indisponible');
         }
       } else {
-        setSireneHint('SIRET introuvable dans SIRENE');
+        setSireneHint('SIRET non vérifié dans SIRENE — vous pouvez quand même créer la facture si le nom client est saisi.');
       }
     } catch {
       setSireneHint('Impossible de vérifier le SIRET (hors ligne)');
@@ -960,7 +960,18 @@ function ModalNouvelleFacture({ onClose, onSave }) {
 
   const handleSave = () => {
     if (!form.client || !form.montantHT) return;
-    onSave({ ...form, montantHT, tva, ttc, tauxTVA: Number(form.tauxTVA) });
+    onSave({
+      client_siret: form.siretClient,
+      client_nom: form.client,
+      description: form.description,
+      montant_ht: montantHT,
+      tva: Number(form.tauxTVA),
+      numero_engagement: form.numeroEngagement,
+      montantHT,
+      tvaMontant: tva,
+      ttc,
+      tauxTVA: Number(form.tauxTVA),
+    });
     onClose();
   };
 
