@@ -917,10 +917,15 @@ const TVA_RATES = [
   { label: '0%', value: 0 },
 ];
 
-function ModalNouvelleFacture({ onClose, onSave }) {
+function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
   const [form, setForm] = useState({
+    clientMode: 'existing',
+    selectedClientId: '',
     siretClient: '',
     client: '',
+    clientEmail: '',
+    clientTelephone: '',
+    clientAdresse: '',
     description: '',
     montantHT: '',
     tauxTVA: 20,
@@ -933,6 +938,36 @@ function ModalNouvelleFacture({ onClose, onSave }) {
   const tva = montantHT * Number(form.tauxTVA) / 100;
   const ttc = montantHT + tva;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const hasClients = clients.length > 0;
+
+  useEffect(() => {
+    if (!hasClients || form.selectedClientId || form.clientMode !== 'existing') return;
+    const c = clients[0];
+    setForm((f) => ({
+      ...f,
+      selectedClientId: String(c.id),
+      siretClient: c.siret_client || '',
+      client: c.nom || '',
+      clientEmail: c.email || '',
+      clientTelephone: c.telephone || '',
+      clientAdresse: c.adresse || '',
+    }));
+  }, [clients, hasClients, form.selectedClientId, form.clientMode]);
+
+  const applyExistingClient = (id) => {
+    const c = clients.find((row) => String(row.id) === String(id));
+    if (!c) return setForm((f) => ({ ...f, selectedClientId: id }));
+    setForm((f) => ({
+      ...f,
+      selectedClientId: String(id),
+      siretClient: c.siret_client || '',
+      client: c.nom || '',
+      clientEmail: c.email || '',
+      clientTelephone: c.telephone || '',
+      clientAdresse: c.adresse || '',
+    }));
+    setSireneHint('');
+  };
 
   const lookupSirene = async () => {
     if (form.siretClient.length !== 14) return;
@@ -967,6 +1002,10 @@ function ModalNouvelleFacture({ onClose, onSave }) {
       montant_ht: montantHT,
       tva: Number(form.tauxTVA),
       numero_engagement: form.numeroEngagement,
+      create_client: form.clientMode === 'new',
+      client_email: form.clientEmail,
+      client_telephone: form.clientTelephone,
+      client_adresse: form.clientAdresse,
       montantHT,
       tvaMontant: tva,
       ttc,
@@ -977,6 +1016,35 @@ function ModalNouvelleFacture({ onClose, onSave }) {
 
   return (
     <Modal title="Nouvelle Facture" onClose={onClose}>
+      <Field label="Client">
+        <select
+          style={inputStyle}
+          value={form.clientMode === 'new' ? '__new__' : form.selectedClientId}
+          onChange={(e) => {
+            if (e.target.value === '__new__') {
+              setForm((f) => ({
+                ...f,
+                clientMode: 'new',
+                selectedClientId: '',
+                siretClient: '',
+                client: '',
+                clientEmail: '',
+                clientTelephone: '',
+                clientAdresse: '',
+              }));
+              setSireneHint('');
+              return;
+            }
+            setForm((f) => ({ ...f, clientMode: 'existing' }));
+            applyExistingClient(e.target.value);
+          }}
+        >
+          {hasClients ? clients.map((c) => (
+            <option key={c.id} value={c.id}>{c.nom}{c.siret_client ? ` - ${c.siret_client}` : ''}</option>
+          )) : <option value="__new__">Aucun client enregistré</option>}
+          <option value="__new__">+ Nouveau client</option>
+        </select>
+      </Field>
       <Field label="SIRET client">
         <div style={{ position: 'relative' }}>
           <input
@@ -985,7 +1053,7 @@ function ModalNouvelleFacture({ onClose, onSave }) {
             value={form.siretClient}
             onChange={(e) => {
               setSireneHint('');
-              set('siretClient')(e);
+              setForm((f) => ({ ...f, siretClient: e.target.value.replace(/\D/g, '').slice(0, 14), clientMode: 'new', selectedClientId: '' }));
             }}
             onBlur={lookupSirene}
             maxLength={14}
@@ -1003,8 +1071,23 @@ function ModalNouvelleFacture({ onClose, onSave }) {
         )}
       </Field>
       <Field label="Nom client *">
-        <input style={inputStyle} placeholder="Acme Corp" value={form.client} onChange={set('client')} />
+        <input style={inputStyle} placeholder="Acme Corp" value={form.client} onChange={(e) => setForm((f) => ({ ...f, client: e.target.value, clientMode: 'new', selectedClientId: '' }))} />
       </Field>
+      {form.clientMode === 'new' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Email client">
+            <input style={inputStyle} type="email" placeholder="contact@client.fr" value={form.clientEmail} onChange={set('clientEmail')} />
+          </Field>
+          <Field label="Téléphone client">
+            <input style={inputStyle} placeholder="01 23 45 67 89" value={form.clientTelephone} onChange={set('clientTelephone')} />
+          </Field>
+        </div>
+      )}
+      {form.clientMode === 'new' && (
+        <Field label="Adresse client">
+          <textarea style={{ ...inputStyle, minHeight: 64 }} placeholder="Adresse de facturation" value={form.clientAdresse} onChange={set('clientAdresse')} />
+        </Field>
+      )}
       <Field label="Description">
         <input
           style={inputStyle}
@@ -1284,8 +1367,18 @@ function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
   const [tab, setTab] = useState('TOUTES');
   const [avoirFacture, setAvoirFacture] = useState(null);
   const [relanceFacture, setRelanceFacture] = useState(null);
+  const [clients, setClients] = useState([]);
   const tabs = ['TOUTES', 'BROUILLON', 'EMISE', 'EN_COURS', 'ACCEPTEE', 'REJETEE'];
   const filtered = tab === 'TOUTES' ? factures : factures.filter((f) => f.statut === tab);
+
+  const loadClients = useCallback(async () => {
+    try {
+      const res = await apiCall('/clients');
+      if (res.ok) setClients(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => { loadClients(); }, [loadClients]);
 
   const refreshStatut = useCallback(
     async (id) => {
@@ -1305,6 +1398,22 @@ function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
   const handleSave = useCallback(
     async (form) => {
       try {
+        if (form.create_client) {
+          const clientRes = await apiCall('/clients', {
+            method: 'POST',
+            body: JSON.stringify({
+              nom: form.client_nom,
+              siret_client: form.client_siret,
+              email: form.client_email,
+              telephone: form.client_telephone,
+              adresse: form.client_adresse,
+            }),
+          });
+          if (clientRes.ok) {
+            const createdClient = await clientRes.json();
+            setClients((rows) => [...rows, createdClient].sort((a, b) => a.nom.localeCompare(b.nom)));
+          }
+        }
         const res = await apiCall('/factures', {
           method: 'POST',
           body: JSON.stringify(form),
@@ -1323,7 +1432,7 @@ function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
   return (
     <div className="fade-in" style={{ padding: '28px 32px' }}>
       {showModal && (
-        <ModalNouvelleFacture onClose={() => setShowModal(false)} onSave={handleSave} />
+        <ModalNouvelleFacture onClose={() => setShowModal(false)} onSave={handleSave} clients={clients} />
       )}
       {avoirFacture && (
         <ModalAvoir
