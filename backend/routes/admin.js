@@ -544,19 +544,36 @@ router.get('/factures', requireAdmin, async (req, res) => {
 router.delete('/entreprises/:siret', requireAdmin, async (req, res) => {
   const { siret } = req.params;
   const client = await pool.connect();
-  const deleteIfTableExists = async (table, column = 'siret') => {
+  const tableExists = async (table) => {
     const safeTable = String(table).replace(/[^a-zA-Z0-9_]/g, '');
-    const safeColumn = String(column).replace(/[^a-zA-Z0-9_]/g, '');
     const exists = await client.query('SELECT to_regclass($1) AS table_name', [`public.${safeTable}`]);
-    if (exists.rows[0]?.table_name) {
+    return exists.rows[0]?.table_name ? safeTable : null;
+  };
+  const deleteIfTableExists = async (table, column = 'siret') => {
+    const safeTable = await tableExists(table);
+    const safeColumn = String(column).replace(/[^a-zA-Z0-9_]/g, '');
+    if (safeTable) {
       await client.query(`DELETE FROM ${safeTable} WHERE ${safeColumn} = $1`, [siret]);
     }
+  };
+  const deleteSqlIfTableExists = async (table, sql) => {
+    if (await tableExists(table)) await client.query(sql, [siret]);
   };
   try {
     const { rows } = await client.query('SELECT id FROM entreprises WHERE siret = $1', [siret]);
     if (!rows[0]) { client.release(); return res.status(404).json({ error: 'Entreprise introuvable' }); }
 
     await client.query('BEGIN');
+    await deleteSqlIfTableExists('relances', 'DELETE FROM relances WHERE siret = $1 OR facture_id IN (SELECT id FROM factures WHERE emetteur_siret = $1)');
+    await deleteIfTableExists('recurring_invoices', 'emetteur_siret');
+    await deleteIfTableExists('comptable_invites');
+    await deleteIfTableExists('journal_entries');
+    await deleteIfTableExists('crm_contrats');
+    await deleteIfTableExists('e_reporting');
+    await deleteIfTableExists('catalogue');
+    await deleteIfTableExists('devis');
+    await deleteIfTableExists('devis_sequences');
+    await deleteIfTableExists('invoice_sequences');
     await client.query('DELETE FROM factures       WHERE emetteur_siret = $1', [siret]);
     await deleteIfTableExists('clients');
     await deleteIfTableExists('depenses');
