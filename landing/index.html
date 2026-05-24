@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FacturEasy — Conformité facturation électronique en 3 semaines</title>
+<meta name="description" content="Pack d'accompagnement distanciel pour passer à la facturation électronique obligatoire via Chorus Pro. 490€ tout compris.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue: #185FA5; --blue-light: #E6F1FB; --blue-mid: #378ADD;
+    --green: #3B6D11; --green-light: #EAF3DE;
+    --gray: #5F5E5A; --gray-light: #F1EFE8; --gray-dark: #2C2C2A;
+    --text: #1a1a1a; --muted: #5F5E5A; --border: #D3D1C7;
+    --radius: 10px; --radius-lg: 16px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); background: #fff; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+
+  /* NAV */
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 10; }
+  .logo { font-size: 18px; font-weight: 700; color: var(--blue); }
+  .logo span { color: var(--text); font-weight: 400; }
+  .cta-nav { background: var(--blue); color: #fff; padding: 8px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+
+  /* HERO */
+  .hero { max-width: 780px; margin: 0 auto; padding: 5rem 2rem 4rem; text-align: center; }
+  .badge { display: inline-block; background: var(--blue-light); color: var(--blue); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 1.5rem; }
+  .hero h1 { font-size: clamp(28px, 5vw, 46px); font-weight: 800; line-height: 1.2; margin-bottom: 1.25rem; }
+  .hero h1 em { color: var(--blue); font-style: normal; }
+  .hero p { font-size: 18px; color: var(--muted); max-width: 560px; margin: 0 auto 2rem; }
+  .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary { background: var(--blue); color: #fff; padding: 14px 32px; border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; border: none; display: inline-block; }
+  .btn-secondary { background: #fff; color: var(--text); padding: 14px 32px; border-radius: var(--radius); font-size: 16px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); display: inline-block; }
+  .hero-trust { margin-top: 1.5rem; font-size: 13px; color: var(--muted); }
+
+  /* URGENCE */
+  .urgence { background: #FEF3C7; border: 1px solid #F59E0B; border-radius: var(--radius); max-width: 700px; margin: 0 auto 4rem; padding: 1rem 1.5rem; text-align: center; font-size: 15px; }
+  .urgence strong { color: #92400E; }
+
+  /* PROBLEME */
+  .section { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+  .section-title { font-size: 28px; font-weight: 800; margin-bottom: 0.5rem; }
+  .section-sub { color: var(--muted); font-size: 16px; margin-bottom: 2.5rem; }
+  .problems { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .problem { background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius); padding: 1.25rem; }
+  .problem .icon { font-size: 22px; margin-bottom: 8px; }
+  .problem p { font-size: 14px; color: #7F1D1D; font-weight: 500; }
+
+  /* CE QUE TU OBTIENS */
+  .offer { background: var(--gray-light); padding: 4rem 2rem; }
+  .offer-inner { max-width: 900px; margin: 0 auto; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 2rem; }
+  .step { background: #fff; border-radius: var(--radius-lg); padding: 1.5rem; border: 1px solid var(--border); }
+  .step-num { width: 32px; height: 32px; background: var(--blue); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .step p { font-size: 13px; color: var(--muted); }
+
+  /* PRIX */
+  .pricing { max-width: 500px; margin: 0 auto; padding: 4rem 2rem; text-align: center; }
+  .price-card { background: #fff; border: 2px solid var(--blue); border-radius: var(--radius-lg); padding: 2.5rem 2rem; }
+  .price-label { font-size: 13px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .price { font-size: 52px; font-weight: 800; color: var(--blue); }
+  .price sup { font-size: 20px; vertical-align: super; }
+  .price-sub { font-size: 14px; color: var(--muted); margin-bottom: 1.5rem; }
+  .inclus { text-align: left; margin: 1.5rem 0; }
+  .inclus li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; margin-bottom: 8px; list-style: none; }
+  .inclus li::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .dispo { background: #FEF3C7; color: #92400E; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 1.5rem; }
+
+  /* FAQ */
+  .faq { max-width: 700px; margin: 0 auto; padding: 4rem 2rem; }
+  .faq-item { border-bottom: 1px solid var(--border); padding: 1.25rem 0; cursor: pointer; }
+  .faq-q { font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; gap: 12px; }
+  .faq-a { font-size: 14px; color: var(--muted); margin-top: 10px; display: none; line-height: 1.7; }
+  .faq-item.open .faq-a { display: block; }
+  .faq-item.open .faq-arrow { transform: rotate(180deg); }
+  .faq-arrow { transition: transform 0.2s; flex-shrink: 0; }
+
+  /* CTA FINAL */
+  .final { background: var(--blue); color: #fff; padding: 5rem 2rem; text-align: center; }
+  .final h2 { font-size: 32px; font-weight: 800; margin-bottom: 1rem; }
+  .final p { font-size: 17px; opacity: 0.85; margin-bottom: 2rem; }
+  .btn-white { background: #fff; color: var(--blue); padding: 14px 36px; border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; border: none; display: inline-block; }
+
+  /* FOOTER */
+  footer { text-align: center; padding: 2rem; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); }
+
+  @media (max-width: 600px) {
+    nav { padding: 1rem; }
+    .hero { padding: 3rem 1rem 2.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Factur<span>Easy</span></div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a class="btn-secondary app-link" href="http://127.0.0.1:5173/" style="padding:8px 16px;font-size:14px;">Espace client</a>
+    <button class="cta-nav" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Réserver une place</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="badge">⚡ Obligation légale au 1er septembre 2026</div>
+  <h1>Conformité facturation électronique<br><em>en 3 semaines, 100% à distance</em></h1>
+  <p>On configure Chorus Pro pour vous, on vous forme, et vous repartez autonome. Sans bloquer votre activité.</p>
+  <div class="hero-cta">
+    <a class="btn-primary app-link" href="http://127.0.0.1:5173/">Créer mon compte client</a>
+    <button class="btn-secondary" onclick="document.getElementById('offre').scrollIntoView({behavior:'smooth'})">Voir ce qui est inclus</button>
+  </div>
+  <p class="hero-trust">10 places disponibles ce mois-ci · Sans engagement de fidélité · 490€ HT tout compris</p>
+</section>
+
+<div style="max-width:700px;margin:0 auto;padding:0 2rem;">
+  <div class="urgence">
+    <strong>Rappel légal :</strong> à partir du 1er septembre 2026, toutes les entreprises françaises assujetties à la TVA doivent recevoir et émettre leurs factures en format électronique. L'amende en cas de non-conformité peut atteindre <strong>15€ par facture</strong>.
+  </div>
+</div>
+
+<section class="section">
+  <h2 class="section-title">Vous reconnaissez-vous ?</h2>
+  <p class="section-sub">La plupart de nos clients découvrent le problème à 2 mois de la deadline.</p>
+  <div class="problems">
+    <div class="problem">
+      <div class="icon">😓</div>
+      <p>« Je ne sais pas si mon logiciel est compatible Chorus Pro »</p>
+    </div>
+    <div class="problem">
+      <div class="icon">😵</div>
+      <p>« J'ai essayé de m'inscrire sur Chorus Pro mais je n'y comprends rien »</p>
+    </div>
+    <div class="problem">
+      <div class="icon">⏰</div>
+      <p>« Je n'ai pas le temps de gérer ça, j'ai mon activité à faire tourner »</p>
+    </div>
+    <div class="problem">
+      <div class="icon">💸</div>
+      <p>« Mon expert-comptable m'a cité des tarifs d'intégration à 2 000€+ »</p>
+    </div>
+  </div>
+</section>
+
+<div class="offer" id="offre">
+  <div class="offer-inner">
+    <h2 class="section-title">Ce que vous obtenez</h2>
+    <p class="section-sub">4 étapes, 3 semaines, tout en visioconférence.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Audit de votre situation</h3>
+        <p>1h en visio. On vérifie votre logiciel actuel, votre SIRET, votre flux de facturation. On identifie exactement ce qui doit changer.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Configuration Chorus Pro</h3>
+        <p>On crée et paramètre votre compte entreprise sur le PPF (Portail Public de Facturation) avec vous, en partage d'écran.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Formation pratique</h3>
+        <p>2 sessions de 1h30. Vous émettez votre première facture électronique réelle. On simule un rejet pour que vous sachiez le gérer seul.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Support 3 mois</h3>
+        <p>Questions par email pendant 3 mois. Guide opérationnel PDF personnalisé livré à la fin. Vous repartez 100% autonome.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="pricing" id="tarif">
+  <h2 class="section-title" style="text-align:center;">Un seul tarif, tout inclus</h2>
+  <p class="section-sub" style="text-align:center;">Pas de frais cachés. Pas d'abonnement.</p>
+  <div class="price-card">
+    <div class="price-label">Pack conformité PPF distanciel</div>
+    <div class="price"><sup>€</sup>490</div>
+    <div class="price-sub">HT · paiement unique · facturé avec TVA</div>
+    <div class="dispo">🔴 10 places disponibles ce mois</div>
+    <ul class="inclus">
+      <li>Audit initial de votre situation (1h)</li>
+      <li>Configuration complète de votre compte Chorus Pro</li>
+      <li>2 sessions de formation en visioconférence (1h30 chacune)</li>
+      <li>Simulation de rejet et résolution en direct</li>
+      <li>Guide opérationnel PDF personnalisé</li>
+      <li>Support email 3 mois</li>
+    </ul>
+    <button class="btn-primary" style="width:100%;padding:16px;" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Réserver ma place maintenant</button>
+  </div>
+</section>
+
+<section class="faq">
+  <h2 class="section-title">Questions fréquentes</h2>
+  <p class="section-sub">Les vraies questions que posent nos clients avant de signer.</p>
+
+  <div class="faq-item" onclick="this.classList.toggle('open')">
+    <div class="faq-q">Chorus Pro, c'est vraiment gratuit pour moi ?<span class="faq-arrow">▾</span></div>
+    <div class="faq-a">Oui. Le Portail Public de Facturation (Chorus Pro) est gratuit pour toutes les entreprises. Vous payez uniquement notre accompagnement pour vous aider à le configurer et vous former. Aucun abonnement mensuel sur la plateforme de l'État.</div>
+  </div>
+  <div class="faq-item" onclick="this.classList.toggle('open')">
+    <div class="faq-q">Mon logiciel de facturation actuel est-il compatible ?<span class="faq-arrow">▾</span></div>
+    <div class="faq-a">La majorité des logiciels du marché (Sage, EBP, Ciel, QuickBooks, Pennylane, Sellsy…) sont déjà compatibles ou le seront avant septembre 2026. On vérifie ça ensemble dès l'audit initial. Si votre logiciel ne l'est pas, on vous guide vers une alternative.</div>
+  </div>
+  <div class="faq-item" onclick="this.classList.toggle('open')">
+    <div class="faq-q">Est-ce que je dois changer de logiciel de facturation ?<span class="faq-arrow">▾</span></div>
+    <div class="faq-a">Pas forcément. Dans la plupart des cas, votre logiciel actuel peut être mis à jour ou configuré pour envoyer les factures au format attendu. On évalue ça dès la première session.</div>
+  </div>
+  <div class="faq-item" onclick="this.classList.toggle('open')">
+    <div class="faq-q">Que se passe-t-il si ma facture est rejetée par le client public ?<span class="faq-arrow">▾</span></div>
+    <div class="faq-a">On vous apprend à gérer les 3 rejets les plus fréquents (numéro d'engagement manquant, SIRET erroné, format incorrect) dès la session de formation. Vous saurez corriger et réémettre en moins de 5 minutes.</div>
+  </div>
+  <div class="faq-item" onclick="this.classList.toggle('open')">
+    <div class="faq-q">Je suis une petite entreprise, est-ce que c'est vraiment obligatoire pour moi ?<span class="faq-arrow">▾</span></div>
+    <div class="faq-a">Si vous êtes assujetti à la TVA et que vous avez des clients professionnels (B2B) ou publics (collectivités, mairies, hôpitaux…), oui. La réforme s'applique à toutes les tailles d'entreprises. Seules les micro-entreprises en franchise de TVA ont un régime différent — à vérifier selon votre situation.</div>
+  </div>
+</section>
+
+<section class="final" id="contact">
+  <h2>Prêt à être conforme avant l'échéance ?</h2>
+  <p>Réservez votre place en 30 secondes. On vous recontacte sous 24h pour caler le premier rendez-vous.</p>
+  <form style="max-width:440px;margin:0 auto 1.5rem;" onsubmit="handleSubmit(event)">
+    <input type="text" placeholder="Votre prénom" required style="width:100%;padding:14px;border-radius:8px;border:none;font-size:15px;margin-bottom:10px;">
+    <input type="email" placeholder="Votre email professionnel" required style="width:100%;padding:14px;border-radius:8px;border:none;font-size:15px;margin-bottom:10px;">
+    <input type="text" placeholder="Votre SIRET (optionnel)" style="width:100%;padding:14px;border-radius:8px;border:none;font-size:15px;margin-bottom:14px;">
+    <button type="submit" class="btn-white" style="width:100%;padding:16px;font-size:16px;">Réserver ma place — 490€ HT ✓</button>
+  </form>
+  <p style="font-size:13px;opacity:0.7;">Paiement après le premier rendez-vous · Remboursement si annulation 48h avant</p>
+</section>
+
+<footer>
+  <p>FacturEasy · Accompagnement à la conformité facturation électronique · <a href="mailto:contact@factureasy.fr">contact@factureasy.fr</a></p>
+  <p style="margin-top:6px;"><a href="#cgv">CGV</a> · <a href="#mentions">Mentions légales</a> · <a href="#confidentialite">Politique de confidentialité</a></p>
+</footer>
+
+<script>
+const APP_URL = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:'
+  ? 'http://127.0.0.1:5173/'
+  : 'https://app.factureasy.fr/';
+document.querySelectorAll('.app-link').forEach(a => { a.href = APP_URL; });
+
+function handleSubmit(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  btn.textContent = '✓ Demande envoyée — on vous recontacte sous 24h';
+  btn.style.background = '#3B6D11';
+  btn.style.color = '#fff';
+  btn.disabled = true;
+}
+</script>
+</body>
+</html>

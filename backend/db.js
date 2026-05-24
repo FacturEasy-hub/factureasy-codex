@@ -1,0 +1,244 @@
+/**
+ * FacturEasy DB adapter.
+ * Uses PostgreSQL when DATABASE_URL exists; otherwise an in-memory dev store.
+ */
+if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
+  const { Pool } = require('pg');
+  const requiresSsl = /sslmode=require/i.test(process.env.DATABASE_URL || '');
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: (process.env.NODE_ENV === 'production' || requiresSsl) ? { rejectUnauthorized: false } : false,
+  });
+  pool.on('error', (err) => {
+    console.error('[DB] Erreur inattendue sur client inactif :', err.message);
+  });
+  module.exports = pool;
+} else {
+  console.warn('[DB] DATABASE_URL absent - stockage memoire DEV actif.');
+
+  const state = {
+    entreprises: [],
+    clients: [],
+    factures: [],
+    invoiceSequences: [],
+    nextEntrepriseId: 1,
+    nextClientId: 1,
+    nextFactureId: 1,
+  };
+
+  const nowIso = () => new Date().toISOString();
+  const empty = () => ({ rows: [], rowCount: 0 });
+
+  function publicEntreprise(e) {
+    if (!e) return e;
+    const { password_hash, ...rest } = e;
+    return { ...rest };
+  }
+
+  function statsFor(siret) {
+    const fs = state.factures.filter((f) => f.emetteur_siret === siret);
+    const sum = (key) => fs.reduce((total, f) => total + Number(f[key] || 0), 0);
+    return {
+      total_factures: String(fs.length),
+      ca_ttc: String(sum('montant_ttc')),
+      ca_ht: String(sum('montant_ht')),
+      en_attente: String(fs.filter((f) => f.statut === 'EMISE').length),
+      acceptees: String(fs.filter((f) => f.statut === 'ACCEPTEE').length),
+      rejetees: String(fs.filter((f) => f.statut === 'REJETEE').length),
+      panier_moyen_ht: fs.length ? String(sum('montant_ht') / fs.length) : '0',
+    };
+  }
+
+  async function query(sql, params = []) {
+    const s = String(sql).replace(/\s+/g, ' ').trim();
+
+    if (/^(CREATE|ALTER|BEGIN|COMMIT|ROLLBACK)/i.test(s)) return empty();
+
+    if (/SELECT (?:\*|id) FROM entreprises WHERE siret = \$1/i.test(s)) {
+      const row = state.entreprises.find((e) => e.siret === params[0]);
+      if (!row) return empty();
+      return { rows: [/SELECT id FROM/i.test(s) ? { id: row.id } : row], rowCount: 1 };
+    }
+
+    if (/SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = \$1/i.test(s)) {
+      const row = state.entreprises.find((e) => e.siret === params[0]);
+      return { rows: row ? [publicEntreprise(row)] : [], rowCount: row ? 1 : 0 };
+    }
+
+    if (/INSERT INTO entreprises/i.test(s)) {
+      const row = {
+        id: state.nextEntrepriseId++,
+        siret: params[0],
+        nom: params[1],
+        email: params[2] || null,
+        password_hash: params[3] || null,
+        plan: params[4] || 'gratuit',
+        contact_nom: params[5] || null,
+        contact_telephone: params[6] || null,
+        domaine: params[7] || null,
+        kbis_url: params[8] || null,
+        notes_admin: params[9] || null,
+        trial_ends_at: null,
+        stripe_customer_id: null,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      };
+      state.entreprises.push(row);
+      return { rows: [publicEntreprise(row)], rowCount: 1 };
+    }
+
+    if (/FROM entreprises e LEFT JOIN factures f ON f\.emetteur_siret = e\.siret/i.test(s)) {
+      const hasSearch = /WHERE \(e\.nom ILIKE \$1 OR e\.siret ILIKE \$1\)/i.test(s);
+      const search = hasSearch ? String(params[0] || '').replace(/%/g, '').toLowerCase() : '';
+      const limit = Number(params[hasSearch ? 1 : 0] || 20);
+      const offset = Number(params[hasSearch ? 2 : 1] || 0);
+      const rows = state.entreprises
+        .filter((e) => !search || String(e.nom).toLowerCase().includes(search) || String(e.siret).includes(search))
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+        .slice(offset, offset + limit)
+        .map((e) => {
+          const fs = state.factures.filter((f) => f.emetteur_siret === e.siret);
+          const ca = fs.reduce((total, f) => total + Number(f.montant_ttc || 0), 0);
+          const last = fs.map((f) => f.date_emission).filter(Boolean).sort().pop() || null;
+          return { ...publicEntreprise(e), nb_factures: String(fs.length), ca_ttc_total: String(ca), derniere_facture: last };
+        });
+      return { rows, rowCount: rows.length };
+    }
+
+    if (/SELECT COUNT\(\*\) FROM entreprises/i.test(s)) {
+      const search = params[0] ? String(params[0]).replace(/%/g, '').toLowerCase() : '';
+      const count = state.entreprises.filter((e) => !search || String(e.nom).toLowerCase().includes(search) || String(e.siret).includes(search)).length;
+      return { rows: [{ count: String(count) }], rowCount: 1 };
+    }
+
+    if (/COUNT\(\*\).*total_entreprises/i.test(s)) {
+      const recentCutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      return { rows: [{
+        total_entreprises: String(state.entreprises.length),
+        new_ce_mois: String(state.entreprises.filter((e) => new Date(e.created_at).getTime() > recentCutoff).length),
+      }], rowCount: 1 };
+    }
+
+    if (/UPDATE entreprises SET nom/i.test(s)) {
+      const row = state.entreprises.find((e) => e.siret === params[0]);
+      if (!row) return empty();
+      row.nom = params[1] || row.nom;
+      row.email = params[2] || row.email;
+      row.updated_at = nowIso();
+      return { rows: [publicEntreprise(row)], rowCount: 1 };
+    }
+
+    if (/DELETE FROM factures\s+WHERE emetteur_siret = \$1/i.test(s)) {
+      const before = state.factures.length;
+      state.factures = state.factures.filter((f) => f.emetteur_siret !== params[0]);
+      return { rows: [], rowCount: before - state.factures.length };
+    }
+
+    if (/DELETE FROM clients\s+WHERE siret = \$1/i.test(s)) {
+      const before = state.clients.length;
+      state.clients = state.clients.filter((c) => c.siret !== params[0]);
+      return { rows: [], rowCount: before - state.clients.length };
+    }
+
+    if (/DELETE FROM entreprises\s+WHERE siret = \$1/i.test(s)) {
+      const before = state.entreprises.length;
+      state.entreprises = state.entreprises.filter((e) => e.siret !== params[0]);
+      return { rows: [], rowCount: before - state.entreprises.length };
+    }
+
+    if (/SELECT id, nom, siret_client, email, telephone, adresse, created_at, updated_at FROM clients WHERE siret = \$1/i.test(s)) {
+      const rows = state.clients
+        .filter((c) => c.siret === params[0])
+        .sort((a, b) => String(a.nom).localeCompare(String(b.nom)))
+        .map(({ siret, ...rest }) => rest);
+      return { rows, rowCount: rows.length };
+    }
+
+    if (/INSERT INTO clients/i.test(s)) {
+      const row = {
+        id: state.nextClientId++,
+        siret: params[0],
+        nom: params[1],
+        siret_client: params[2] || null,
+        email: params[3] || null,
+        telephone: params[4] || null,
+        adresse: params[5] || null,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      };
+      state.clients.push(row);
+      const { siret, ...publicRow } = row;
+      return { rows: [publicRow], rowCount: 1 };
+    }
+
+    if (/INSERT INTO invoice_sequences/i.test(s)) {
+      const key = { siret: params[0], year: params[1] };
+      let row = state.invoiceSequences.find((seq) => seq.siret === key.siret && seq.year === key.year);
+      if (!row) {
+        row = { ...key, last_seq: 1 };
+        state.invoiceSequences.push(row);
+      } else {
+        row.last_seq += 1;
+      }
+      return { rows: [{ last_seq: row.last_seq }], rowCount: 1 };
+    }
+
+    if (/SELECT \* FROM factures WHERE emetteur_siret = \$1/i.test(s)) {
+      let rows = state.factures.filter((f) => f.emetteur_siret === params[0]);
+      if (/AND statut = \$2/i.test(s)) rows = rows.filter((f) => f.statut === params[1]);
+      return { rows, rowCount: rows.length };
+    }
+
+    if (/SELECT \* FROM factures WHERE id = \$1/i.test(s)) {
+      const row = state.factures.find((f) => f.id === Number(params[0]));
+      return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
+    }
+
+    if (/INSERT INTO factures/i.test(s)) {
+      const row = {
+        id: state.nextFactureId++,
+        numero: params[0],
+        emetteur_siret: params[1],
+        client_siret: params[2],
+        client_nom: params[3],
+        description: params[4],
+        montant_ht: Number(params[5]),
+        tva: Number(params[6]),
+        montant_ttc: Number(params[7]),
+        statut: /'BROUILLON'/i.test(s) ? 'BROUILLON' : 'EMISE',
+        chorus_id: params[8] || null,
+        date_emission: nowIso(),
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      };
+      state.factures.push(row);
+      return { rows: [row], rowCount: 1 };
+    }
+
+    if (/UPDATE factures SET statut/i.test(s)) {
+      const row = state.factures.find((f) => f.id === Number(params[1]));
+      if (row) row.statut = params[0];
+      return empty();
+    }
+
+    if (/COUNT\(\*\).*total_factures/i.test(s) || /FROM factures WHERE emetteur_siret = \$1/i.test(s)) {
+      return { rows: [statsFor(params[0])], rowCount: 1 };
+    }
+
+    if (/FROM depenses/i.test(s) || /FROM revenus_manuels/i.test(s) || /FROM categories/i.test(s)) {
+      if (/COALESCE\(SUM/i.test(s)) return { rows: [{ total: '0', tva: '0' }], rowCount: 1 };
+      if (/COUNT/i.test(s)) return { rows: [{ count: '0', total: '0' }], rowCount: 1 };
+      return empty();
+    }
+
+    return empty();
+  }
+
+  module.exports = {
+    query,
+    async connect() {
+      return { query, release() {} };
+    },
+    on() {},
+  };
+}

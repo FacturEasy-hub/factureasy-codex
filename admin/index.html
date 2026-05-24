@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>FacturEasy — Backoffice</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d0f1a;color:#e2e8f0;min-height:100vh;font-size:14px}
+
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0d0f1a 0%,#1a1d2e 100%)}
+.login-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:44px 40px;width:400px}
+.login-logo{font-size:32px;text-align:center;margin-bottom:8px}
+.login-title{font-size:20px;font-weight:700;text-align:center;color:#fff;margin-bottom:4px}
+.login-sub{font-size:13px;color:#4b5563;text-align:center;margin-bottom:32px}
+.field-label{font-size:12px;color:#64748b;margin-bottom:6px;display:block;font-weight:500}
+.field-input{width:100%;padding:11px 14px;border-radius:8px;border:1px solid #2d3148;background:#0d0f1a;color:#e2e8f0;font-size:14px;margin-bottom:16px;outline:none;transition:border-color .15s}
+.field-input:focus{border-color:#4f46e5}
+.btn-login{width:100%;padding:12px;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-login:hover{background:#4338ca}
+.btn-login:disabled{background:#374151;cursor:not-allowed}
+.login-error{color:#f87171;font-size:12px;margin-top:12px;text-align:center;min-height:18px}
+
+/* ── APP ── */
+#app{display:none;min-height:100vh}
+.topbar{background:#1a1d2e;border-bottom:1px solid #252840;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-logo{font-size:15px;font-weight:700;color:#a5b4fc}
+.topbar-env{background:#312e81;color:#a5b4fc;font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.topbar-date{font-size:12px;color:#374151}
+.btn-logout{background:transparent;border:1px solid #374151;color:#6b7280;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .15s}
+.btn-logout:hover{border-color:#4f46e5;color:#a5b4fc}
+
+/* ── LAYOUT ── */
+.layout{display:flex;height:calc(100vh - 56px)}
+.sidebar{width:210px;min-width:210px;background:#12141f;border-right:1px solid #1e2235;padding:16px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;color:#64748b;border:none;background:none;width:100%;text-align:left;transition:all .12s}
+.nav-item:hover{background:#1a1d2e;color:#cbd5e1}
+.nav-item.active{background:#1e1b4b;color:#a5b4fc;font-weight:600}
+.nav-badge{margin-left:auto;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.nav-sep{border:none;border-top:1px solid #1e2235;margin:8px 4px}
+.main{flex:1;overflow-y:auto;padding:28px 32px}
+
+/* ── SECTIONS ── */
+.section{display:none}.section.active{display:block}
+.page-title{font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px}
+.page-sub{font-size:13px;color:#4b5563;margin-bottom:24px}
+
+/* ── KPI ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
+.kpi-card{background:#1a1d2e;border:1px solid #252840;border-radius:12px;padding:20px 22px;cursor:default}
+.kpi-card.clickable{cursor:pointer}.kpi-card.clickable:hover{border-color:#4f46e5}
+.kpi-lbl{font-size:11px;color:#4b5563;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px}
+.kpi-val{font-size:28px;font-weight:700;line-height:1;margin-bottom:6px}
+.kpi-chg{font-size:12px;color:#4b5563}
+.kpi-chg .up{color:#34d399}.kpi-chg .down{color:#f87171}
+.v-purple{color:#a78bfa}.v-green{color:#34d399}.v-blue{color:#60a5fa}.v-amber{color:#fbbf24}.v-red{color:#f87171}.v-teal{color:#2dd4bf}
+
+/* ── CARD + TABLE ── */
+.card{background:#1a1d2e;border:1px solid #252840;border-radius:12px;overflow:hidden;margin-bottom:20px}
+.card-header{padding:16px 20px;border-bottom:1px solid #252840;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-title{font-size:14px;font-weight:600;color:#e2e8f0}
+.card-count{font-size:12px;color:#4b5563}
+.filters{display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid #1e2235;background:#12141f}
+.f-inp,.f-sel{padding:7px 11px;border-radius:7px;border:1px solid #2d3148;background:#1a1d2e;color:#e2e8f0;font-size:12px;outline:none;transition:border-color .15s}
+.f-inp:focus,.f-sel:focus{border-color:#4f46e5}
+.f-btn{padding:7px 16px;border-radius:7px;border:none;background:#4f46e5;color:#fff;font-size:12px;font-weight:500;cursor:pointer}
+.f-btn:hover{background:#4338ca}
+.f-btn-ghost{background:#1e2235;color:#9ca3af}.f-btn-ghost:hover{background:#252840;color:#e2e8f0}
+.f-btn-green{background:#065f46;color:#34d399}.f-btn-green:hover{background:#047857}
+.f-btn-amber{background:#78350f;color:#fbbf24}.f-btn-amber:hover{background:#92400e}
+.f-btn-red{background:#450a0a;color:#f87171}.f-btn-red:hover{background:#7f1d1d}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:11px;color:#4b5563;text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:10px 16px;text-align:left;border-bottom:1px solid #252840;white-space:nowrap}
+tbody td{font-size:13px;color:#94a3b8;padding:12px 16px;border-bottom:1px solid #1a1d2e;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#12141f}
+.pagination{display:flex;align-items:center;gap:5px;padding:12px 20px;justify-content:flex-end;border-top:1px solid #252840;flex-wrap:wrap}
+.pg-btn{padding:5px 10px;border-radius:5px;border:1px solid #2d3148;background:transparent;color:#6b7280;cursor:pointer;font-size:12px}
+.pg-btn:hover{border-color:#4f46e5;color:#a5b4fc}
+.pg-btn.active{background:#4f46e5;border-color:#4f46e5;color:#fff}
+.pg-btn:disabled{opacity:.3;cursor:not-allowed}
+.pg-info{font-size:12px;color:#374151;margin-left:6px}
+
+/* ── BADGES ── */
+.badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.b-green{background:#064e3b;color:#34d399}.b-blue{background:#1e3a5f;color:#60a5fa}
+.b-orange{background:#431407;color:#fb923c}.b-red{background:#450a0a;color:#f87171}
+.b-gray{background:#1e2235;color:#6b7280}.b-amber{background:#451a03;color:#fbbf24}
+.p-gratuit{background:#1e2235;color:#6b7280}.p-solo{background:#0e3a4a;color:#38bdf8}
+.p-pro{background:#1e1b4b;color:#a5b4fc}.p-equipe{background:#2e1065;color:#c084fc}
+.p-business{background:#450a0a;color:#fca5a5}
+
+/* ── PROGRESS BAR ── */
+.prog-wrap{background:#1e2235;border-radius:4px;height:6px;overflow:hidden;margin-top:6px}
+.prog-bar{height:100%;border-radius:4px;transition:width .4s}
+
+/* ── ALERT CARDS ── */
+.alert-card{border-radius:10px;padding:14px 18px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px}
+.alert-card.red{background:#450a0a;border:1px solid #7f1d1d}
+.alert-card.amber{background:#451a03;border:1px solid #78350f}
+.alert-card.green{background:#052e16;border:1px solid #065f46}
+.alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.alert-body{flex:1}
+.alert-title{font-size:13px;font-weight:600;color:#f1f5f9;margin-bottom:3px}
+.alert-sub{font-size:12px;color:#6b7280}
+
+/* ── ACTIONS ── */
+.btn-sm{padding:5px 11px;font-size:11px;border-radius:5px;cursor:pointer;border:1px solid #2d3148;background:transparent;color:#9ca3af;font-weight:500;transition:all .12s}
+.btn-sm:hover{border-color:#4f46e5;color:#a5b4fc}
+.btn-del{border-color:#7f1d1d;color:#f87171}.btn-del:hover{background:rgba(127,29,29,.25)}
+.btn-ok{border-color:#065f46;color:#34d399}.btn-ok:hover{background:rgba(6,95,70,.25)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal-box{background:#1a1d2e;border:1px solid #2d3148;border-radius:14px;padding:28px 30px;width:780px;max-width:96vw;max-height:88vh;overflow-y:auto}
+.modal-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:700;color:#f1f5f9}
+.modal-close{background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1}
+.modal-close:hover{color:#e2e8f0}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-bottom:20px}
+.detail-item label{font-size:11px;color:#4b5563;display:block;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.detail-item span{font-size:13px;color:#e2e8f0}
+.modal-sub{font-size:11px;font-weight:600;color:#64748b;margin:18px 0 12px;border-top:1px solid #252840;padding-top:18px;text-transform:uppercase;letter-spacing:.04em}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.action-inp{padding:7px 11px;border-radius:7px;border:1px solid #2d3148;background:#0d0f1a;color:#e2e8f0;font-size:12px;outline:none;width:80px}
+.action-inp:focus{border-color:#4f46e5}
+
+/* ── SVG CHART ── */
+.chart-wrap{padding:20px 24px;overflow-x:auto}
+.chart-tooltip{position:absolute;background:#0d0f1a;border:1px solid #2d3148;border-radius:6px;padding:6px 10px;font-size:11px;color:#e2e8f0;pointer-events:none;display:none;white-space:nowrap;z-index:100}
+
+/* ── REVENUE PLAN TABLE ── */
+.plan-row{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #1e2235}
+.plan-row:last-child{border-bottom:none}
+.plan-name{width:90px;flex-shrink:0}
+.plan-bar-wrap{flex:1;background:#1e2235;border-radius:4px;height:8px;overflow:hidden}
+.plan-bar{height:100%;border-radius:4px}
+.plan-mrr{width:80px;text-align:right;font-size:13px;font-weight:600;flex-shrink:0}
+.plan-count{width:60px;text-align:right;font-size:12px;color:#4b5563;flex-shrink:0}
+
+/* ── STATES ── */
+.state-loading{text-align:center;padding:48px;color:#374151}
+.state-empty{text-align:center;padding:40px;color:#374151}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid #252840;border-top-color:#4f46e5;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert-err{background:#450a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+.alert-ok{background:#052e16;border:1px solid #065f46;color:#34d399;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+
+/* ── MISC ── */
+.mono{font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:12px}
+.t-strong{color:#e2e8f0;font-weight:500}.t-muted{color:#4b5563}
+.t-green{color:#34d399}.t-blue{color:#60a5fa}.t-amber{color:#fbbf24}.t-red{color:#f87171}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">⚡</div>
+    <div class="login-title">FacturEasy Backoffice</div>
+    <div class="login-sub">Accès réservé aux administrateurs</div>
+    <label class="field-label">Secret administrateur</label>
+    <input id="secret-input" class="field-input" type="password" placeholder="••••••••••••"/>
+    <button class="btn-login" id="login-btn" type="button" onclick="window.doLogin()">Se connecter</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">⚡ FacturEasy</span>
+      <span class="topbar-env">Backoffice</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="topbar-date"></span>
+      <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <button class="nav-item active" data-section="dashboard" onclick="navTo('dashboard',this)"><span>📊</span> Dashboard</button>
+      <button class="nav-item" data-section="revenue" onclick="navTo('revenue',this)"><span>💰</span> Revenus & MRR</button>
+      <button class="nav-item" data-section="monitoring" onclick="navTo('monitoring',this)"><span>🔔</span> Monitoring <span class="nav-badge" id="badge-monitoring" style="display:none">0</span></button>
+      <hr class="nav-sep">
+      <button class="nav-item" data-section="entreprises" onclick="navTo('entreprises',this)"><span>🏢</span> Entreprises</button>
+      <button class="nav-item" data-section="factures" onclick="navTo('factures',this)"><span>🧾</span> Factures</button>
+      <button class="nav-item" data-section="abonnements" onclick="navTo('abonnements',this)"><span>💳</span> Abonnements</button>
+      <hr class="nav-sep">
+      <button class="nav-item" data-section="systeme" onclick="navTo('systeme',this)"><span>⚙️</span> Système</button>
+    </nav>
+
+    <main class="main">
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div id="section-dashboard" class="section active">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Vue d'ensemble en temps réel</div>
+        <div id="err-dashboard"></div>
+        <div class="kpi-grid" id="kpi-dash"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Dernières inscriptions</span>
+              <button class="f-btn f-btn-ghost" style="font-size:11px" onclick="loadDashboard()">Actualiser</button>
+            </div>
+            <table><thead><tr><th>Entreprise</th><th>Plan</th><th>Inscription</th></tr></thead>
+            <tbody id="dash-recents"><tr><td colspan="3" class="state-loading"><div class="spinner"></div></td></tr></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">⚠️ Essais expirant cette semaine</span></div>
+            <div id="dash-expiring"><div class="state-loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ REVENUS & MRR ═══ -->
+      <div id="section-revenue" class="section">
+        <div class="page-title">Revenus & MRR</div>
+        <div class="page-sub">Monthly Recurring Revenue — calculé en temps réel depuis les plans actifs</div>
+        <div id="err-revenue"></div>
+        <div class="kpi-grid" id="kpi-rev"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Répartition MRR par plan</span></div>
+            <div id="rev-breakdown"><div class="state-loading"><div class="spinner"></div></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Conversion &amp; rétention</span></div>
+            <div id="rev-conversion" style="padding:20px 24px"><div class="state-loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Nouvelles inscriptions — 12 derniers mois</span></div>
+          <div class="chart-wrap" id="rev-chart"><div class="state-loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ MONITORING ═══ -->
+      <div id="section-monitoring" class="section">
+        <div class="page-title">Monitoring</div>
+        <div class="page-sub">Alertes actives nécessitant une action</div>
+        <div id="err-monitoring"></div>
+        <div class="two-col">
+          <div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">🔴 Essais expirant dans 7 jours</span><span class="card-count" id="mon-expiring-count"></span></div>
+              <div id="mon-expiring"><div class="state-loading"><div class="spinner"></div></div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">🟡 Essais expirés non convertis</span><span class="card-count" id="mon-lost-count"></span></div>
+              <div id="mon-lost" style="max-height:320px;overflow-y:auto"><div class="state-loading"><div class="spinner"></div></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">🟠 Quotas proches de la limite</span></div>
+              <div id="mon-quota"><div class="state-loading"><div class="spinner"></div></div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">🟢 Conversions récentes (30j)</span></div>
+              <div id="mon-recent"><div class="state-loading"><div class="spinner"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ENTREPRISES ═══ -->
+      <div id="section-entreprises" class="section">
+        <div class="page-title">Entreprises</div>
+        <div class="page-sub">Gestion des comptes inscrits</div>
+        <div id="err-entreprises"></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Tous les comptes</span><span class="card-count" id="ent-count"></span></div>
+          <div class="filters">
+            <input id="ent-search" class="f-inp" placeholder="Nom ou SIRET…" style="width:210px" onkeydown="if(event.key==='Enter')loadEntreprises(1)"/>
+            <select id="ent-plan" class="f-sel" onchange="loadEntreprises(1)">
+              <option value="">Tous plans</option>
+              <option value="gratuit">Gratuit</option><option value="solo">Solo</option>
+              <option value="pro">Pro</option><option value="equipe">Équipe</option>
+              <option value="business">Business</option>
+            </select>
+            <button class="f-btn" onclick="loadEntreprises(1)">Rechercher</button>
+            <button class="f-btn" onclick="showCreateEnt()">+ Client</button>
+            <button class="f-btn f-btn-ghost" onclick="resetEntFilters()">Réinitialiser</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Entreprise</th><th>SIRET</th><th>Plan</th><th>Factures</th><th>CA TTC</th><th>Essai</th><th>Inscription</th><th>Actions</th></tr></thead>
+              <tbody id="ent-tbody"><tr><td colspan="8" class="state-loading"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="ent-pagination"></div>
+        </div>
+      </div>
+
+      <!-- ═══ FACTURES ═══ -->
+      <div id="section-factures" class="section">
+        <div class="page-title">Factures</div>
+        <div class="page-sub">Toutes les factures de la plateforme</div>
+        <div id="err-factures"></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Toutes les factures</span><span class="card-count" id="fact-count"></span></div>
+          <div class="filters">
+            <select id="fact-statut" class="f-sel">
+              <option value="">Tous statuts</option><option value="EMISE">Émise</option>
+              <option value="EN_COURS">En cours</option><option value="ACCEPTEE">Acceptée</option>
+              <option value="REJETEE">Rejetée</option>
+            </select>
+            <input id="fact-siret" class="f-inp" placeholder="SIRET…" style="width:150px"/>
+            <input id="fact-from" class="f-inp" type="date" style="width:138px"/>
+            <input id="fact-to" class="f-inp" type="date" style="width:138px"/>
+            <button class="f-btn" onclick="loadFactures(1)">Filtrer</button>
+            <button class="f-btn f-btn-ghost" onclick="resetFactFilters()">Réinitialiser</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Numéro</th><th>Émetteur</th><th>Client</th><th>TTC</th><th>Statut</th><th>Date</th><th>Chorus ID</th></tr></thead>
+              <tbody id="fact-tbody"><tr><td colspan="7" class="state-loading"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="fact-pagination"></div>
+        </div>
+      </div>
+
+      <!-- ═══ ABONNEMENTS ═══ -->
+      <div id="section-abonnements" class="section">
+        <div class="page-title">Abonnements</div>
+        <div class="page-sub">Plans actifs et statut Stripe</div>
+        <div id="err-abonnements"></div>
+        <div class="kpi-grid" id="sub-kpis"></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Entreprises par plan</span><span class="card-count" id="sub-count"></span></div>
+          <div class="filters">
+            <select id="sub-plan" class="f-sel" onchange="loadAbonnements(1)">
+              <option value="">Tous les plans</option>
+              <option value="gratuit">Gratuit</option><option value="solo">Solo</option>
+              <option value="pro">Pro</option><option value="equipe">Équipe</option>
+              <option value="business">Business</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Entreprise</th><th>Email</th><th>Plan</th><th>Fin d'essai</th><th>Stripe Customer</th><th>Inscription</th></tr></thead>
+              <tbody id="sub-tbody"><tr><td colspan="6" class="state-loading"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="sub-pagination"></div>
+        </div>
+      </div>
+
+      <!-- ═══ SYSTÈME ═══ -->
+      <div id="section-systeme" class="section">
+        <div class="page-title">Système</div>
+        <div class="page-sub">Santé de l'API et informations de déploiement</div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Connexion API</span></div>
+            <div style="padding:20px 24px">
+              <div class="detail-grid" style="margin-bottom:20px">
+                <div class="detail-item"><label>URL API</label><span class="mono" id="sys-api-url"></span></div>
+                <div class="detail-item"><label>Statut</label><span id="sys-status">—</span></div>
+                <div class="detail-item"><label>Rôle JWT</label><span>admin</span></div>
+                <div class="detail-item"><label>Token (extrait)</label><span class="mono" id="sys-token">—</span></div>
+              </div>
+              <button class="f-btn" onclick="checkHealth()">Tester la connexion</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Actions d'urgence</span></div>
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:10px">
+              <button class="f-btn f-btn-ghost" onclick="loadDashboard();navTo('dashboard',document.querySelector('[data-section=dashboard]'))">Rafraîchir le dashboard</button>
+              <button class="f-btn f-btn-amber" onclick="navTo('monitoring',document.querySelector('[data-section=monitoring]'))">Voir les alertes monitoring</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODAL DÉTAIL ENTREPRISE -->
+<div id="modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-top">
+      <div class="modal-title" id="modal-title">Détail</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<div class="chart-tooltip" id="tooltip"></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════
+const API = window.location.origin;
+
+const safeStorage = (() => {
+  try {
+    const s = window.sessionStorage;
+    const k = '__fe_admin_test__';
+    s.setItem(k, '1');
+    s.removeItem(k);
+    return s;
+  } catch {
+    const mem = {};
+    return {
+      getItem: key => mem[key] || '',
+      setItem: (key, value) => { mem[key] = String(value); },
+      removeItem: key => { delete mem[key]; },
+    };
+  }
+})();
+let TOKEN = safeStorage.getItem('fe_admin_token') || '';
+let pageEnt=1, pageFact=1, pageSub=1;
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+const hdrs = () => ({'Content-Type':'application/json', Authorization:`Bearer ${TOKEN}`});
+window.fetch = (url, opts = {}) => new Promise((resolve, reject) => {
+  const xhr = new XMLHttpRequest();
+  xhr.open(opts.method || 'GET', url);
+  Object.entries(opts.headers || {}).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+  xhr.onload = () => resolve({
+    ok: xhr.status >= 200 && xhr.status < 300,
+    status: xhr.status,
+    headers: { get: (name) => name.toLowerCase() === 'content-type' ? xhr.getResponseHeader('content-type') : null },
+    json: () => Promise.resolve(JSON.parse(xhr.responseText || 'null')),
+    text: () => Promise.resolve(xhr.responseText || ''),
+  });
+  xhr.onerror = () => reject(new Error('Serveur injoignable'));
+  xhr.send(opts.body || null);
+});
+
+const eur = (n, dec=0) =>
+  new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:dec}).format(n||0);
+
+const dt = (d) => {
+  if(!d) return '—';
+  return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+};
+
+const esc = (v) => String(v ?? '')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;')
+  .replace(/'/g,'&#39;');
+const jsAttr = (v) => esc(String(v ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' '));
+
+const planBadge = (plan) => {
+  const m={gratuit:['p-gratuit','Gratuit'],solo:['p-solo','Solo'],pro:['p-pro','Pro'],
+           equipe:['p-equipe','Équipe'],business:['p-business','Business']};
+  const [cls,lbl]=m[plan]||['p-gratuit',plan||'Gratuit'];
+  return `<span class="badge ${cls}">${esc(lbl)}</span>`;
+};
+
+const statutBadge = (s) => {
+  const m={EMISE:'b-blue',EN_COURS:'b-orange',ACCEPTEE:'b-green',REJETEE:'b-red'};
+  return `<span class="badge ${m[s]||'b-gray'}">${esc(s||'—')}</span>`;
+};
+
+function setErr(id,msg) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.innerHTML=msg?`<div class="alert-err">${esc(msg)}</div>`:'';
+}
+function setOk(id,msg) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.innerHTML=msg?`<div class="alert-ok">✓ ${esc(msg)}</div>`:'';
+  if(msg) setTimeout(()=>{ if(el) el.innerHTML=''; },3500);
+}
+
+function pg(cid,page,pages,fn){
+  const el=document.getElementById(cid);
+  if(!el||pages<=1){if(el)el.innerHTML='';return;}
+  let h=`<button class="pg-btn" onclick="${fn}(${page-1})" ${page<=1?'disabled':''}>←</button>`;
+  const lo=Math.max(1,page-2),hi=Math.min(pages,page+2);
+  if(lo>1) h+=`<button class="pg-btn" onclick="${fn}(1)">1</button>${lo>2?'<span class="pg-info">…</span>':''}`;
+  for(let i=lo;i<=hi;i++) h+=`<button class="pg-btn ${i===page?'active':''}" onclick="${fn}(${i})">${i}</button>`;
+  if(hi<pages) h+=`${hi<pages-1?'<span class="pg-info">…</span>':''}<button class="pg-btn" onclick="${fn}(${pages})">${pages}</button>`;
+  h+=`<button class="pg-btn" onclick="${fn}(${page+1})" ${page>=pages?'disabled':''}>→</button>`;
+  h+=`<span class="pg-info">${page}/${pages}</span>`;
+  el.innerHTML=h;
+}
+
+async function apiFetch(path,opts={}) {
+  const r=await fetch(`${API}${path}`,{...opts,headers:hdrs()});
+  if(r.status===401){doLogout();throw new Error('Session expirée');}
+  const data=await r.json();
+  if(!r.ok) throw new Error(data.error||`Erreur ${r.status}`);
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
+async function doLogin(){
+  const secret=document.getElementById('secret-input').value.trim();
+  const btn=document.getElementById('login-btn');
+  const errEl=document.getElementById('login-error');
+  if(!secret){errEl.textContent='Saisissez le secret administrateur.';return;}
+  btn.disabled=true; btn.textContent='Connexion…'; errEl.textContent='';
+  try{
+    const r=await fetch(`${API}/auth/admin`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});
+    const ct = r.headers.get('content-type') || '';
+    const data = ct.includes('application/json') ? await r.json() : { error: `Réponse serveur invalide (${r.status})` };
+    if(!r.ok) throw new Error(data.error||'Secret invalide');
+    TOKEN=data.token;
+    safeStorage.setItem('fe_admin_token',TOKEN);
+    initApp();
+  }catch(e){errEl.textContent=e.message;}
+  finally{btn.disabled=false;btn.textContent='Se connecter';}
+}
+window.doLogin = doLogin;
+
+function doLogout(){
+  safeStorage.removeItem('fe_admin_token'); TOKEN='';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('secret-input').value='';
+  document.getElementById('login-error').textContent='';
+}
+window.doLogout = doLogout;
+
+document.getElementById('login-btn').addEventListener('click',doLogin);
+document.getElementById('secret-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+function initApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('topbar-date').textContent=
+    new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const apiDisplay=API||window.location.origin;
+  document.getElementById('sys-api-url').textContent=apiDisplay;
+  document.getElementById('sys-token').textContent=TOKEN?TOKEN.slice(0,24)+'…':'—';
+  loadDashboard();
+  // Pré-charger le badge monitoring en arrière-plan
+  loadMonitoringBadge();
+}
+if(TOKEN) initApp();
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function navTo(name,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  const loaders={entreprises:()=>loadEntreprises(1),factures:()=>loadFactures(1),
+                 abonnements:()=>loadAbonnements(1),revenue:loadRevenue,monitoring:loadMonitoring};
+  if(loaders[name]) loaders[name]();
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+async function loadDashboard(){
+  setErr('err-dashboard','');
+  document.getElementById('kpi-dash').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  document.getElementById('dash-recents').innerHTML=`<tr><td colspan="3" class="state-loading"><div class="spinner"></div></td></tr>`;
+  document.getElementById('dash-expiring').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  try{
+    const [stats,rev,mon]=await Promise.all([
+      apiFetch('/admin/stats'),
+      apiFetch('/admin/revenue').catch(()=>null),
+      apiFetch('/admin/monitoring').catch(()=>null),
+    ]);
+    const e=stats.entreprises||{}, f=stats.factures||{};
+    const mrr=rev?.mrr_current||0;
+    const taux=f.total_factures>0?Math.round((f.acceptees||0)/f.total_factures*100):0;
+    document.getElementById('kpi-dash').innerHTML=`
+      <div class="kpi-card"><div class="kpi-lbl">Entreprises</div>
+        <div class="kpi-val v-purple">${e.total_entreprises||0}</div>
+        <div class="kpi-chg"><span class="up">+${e.new_ce_mois||0}</span> ce mois</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">MRR</div>
+        <div class="kpi-val v-green" style="font-size:22px">${eur(mrr)}</div>
+        <div class="kpi-chg">ARR ${eur(mrr*12)}</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">Factures</div>
+        <div class="kpi-val v-blue">${f.total_factures||0}</div>
+        <div class="kpi-chg">${f.en_attente||0} en attente</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">Taux succès</div>
+        <div class="kpi-val v-green">${taux}%</div>
+        <div class="kpi-chg"><span class="up">${f.acceptees||0}</span> acc. / <span class="down">${f.rejetees||0}</span> rej.</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">Conversion essai</div>
+        <div class="kpi-val v-teal">${rev?.conversion_rate||0}%</div>
+        <div class="kpi-chg">${rev?.converted||0} / ${rev?.total_trials||0} essais</div></div>`;
+
+    const ents=await apiFetch('/admin/entreprises?limit=6&page=1');
+    document.getElementById('dash-recents').innerHTML=ents.data.length===0
+      ?`<tr><td colspan="3" class="state-empty">Aucune inscription</td></tr>`
+      :ents.data.map(en=>`<tr>
+          <td class="t-strong">${esc(en.nom)}</td>
+          <td>${planBadge(en.plan)}</td>
+          <td class="t-muted">${dt(en.created_at)}</td></tr>`).join('');
+
+    if(mon?.expiring_soon?.length){
+      document.getElementById('dash-expiring').innerHTML=mon.expiring_soon.map(e=>`
+        <div style="padding:12px 20px;border-bottom:1px solid #1e2235;display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div><div class="t-strong" style="font-size:13px">${esc(e.nom)}</div>
+          <div style="font-size:12px;color:#4b5563">${esc(e.email||e.siret)}</div></div>
+          <div style="text-align:right;flex-shrink:0">
+            <span class="badge b-red">${e.days_left}j</span>
+            <button class="btn-sm btn-ok" style="margin-left:6px;font-size:10px" onclick="quickExtend('${jsAttr(e.siret)}','${jsAttr(e.nom)}')">+30j</button>
+          </div>
+        </div>`).join('');
+    } else {
+      document.getElementById('dash-expiring').innerHTML=`<div class="state-empty" style="padding:24px">✓ Aucun essai en alerte</div>`;
+    }
+  }catch(err){
+    setErr('err-dashboard',err.message);
+    document.getElementById('kpi-dash').innerHTML='';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// REVENUS & MRR
+// ═══════════════════════════════════════════════════════
+const PLAN_COLORS={gratuit:'#374151',solo:'#0891b2',pro:'#4f46e5',equipe:'#7c3aed',business:'#dc2626'};
+const PLAN_LABELS={gratuit:'Gratuit',solo:'Solo',pro:'Pro',equipe:'Équipe',business:'Business'};
+const PLAN_PRICES={gratuit:0,solo:14,pro:34,equipe:69,business:149};
+
+async function loadRevenue(){
+  setErr('err-revenue','');
+  document.getElementById('kpi-rev').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  document.getElementById('rev-breakdown').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  document.getElementById('rev-conversion').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  document.getElementById('rev-chart').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  try{
+    const d=await apiFetch('/admin/revenue');
+    const mrr=d.mrr_current||0;
+
+    document.getElementById('kpi-rev').innerHTML=`
+      <div class="kpi-card"><div class="kpi-lbl">MRR</div>
+        <div class="kpi-val v-green" style="font-size:24px">${eur(mrr)}</div>
+        <div class="kpi-chg">Monthly Recurring Revenue</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">ARR</div>
+        <div class="kpi-val v-blue" style="font-size:22px">${eur(mrr*12)}</div>
+        <div class="kpi-chg">Annual Run Rate</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">ARPU</div>
+        <div class="kpi-val v-purple" style="font-size:24px">${eur(d.arpu||0)}</div>
+        <div class="kpi-chg">Avg. Revenue Per User payant</div></div>
+      <div class="kpi-card"><div class="kpi-lbl">Churn ce mois</div>
+        <div class="kpi-val v-red">${d.churn_this_month||0}</div>
+        <div class="kpi-chg">Essais expirés non convertis</div></div>`;
+
+    // Répartition par plan
+    const plans=['solo','pro','equipe','business'];
+    const maxMrr=Math.max(...plans.map(p=>(d.by_plan[p]?.mrr||0)),1);
+    document.getElementById('rev-breakdown').innerHTML=`
+      <div style="padding:8px 0">
+        ${['gratuit',...plans].map(p=>{
+          const info=d.by_plan[p]||{count:0,mrr:0};
+          const pct=mrr>0?Math.round((info.mrr/mrr)*100):0;
+          const barW=mrr>0?Math.round((info.mrr/Math.max(mrr,1))*100):0;
+          return `<div class="plan-row">
+            <div class="plan-name">${planBadge(p)}</div>
+            <div class="plan-bar-wrap"><div class="plan-bar" style="width:${barW}%;background:${PLAN_COLORS[p]}"></div></div>
+            <div class="plan-mrr t-green">${eur(info.mrr)}</div>
+            <div class="plan-count">${info.count} client${info.count!==1?'s':''}</div>
+          </div>`;
+        }).join('')}
+        <div style="padding:14px 20px;border-top:1px solid #252840;display:flex;justify-content:space-between">
+          <span class="t-muted" style="font-size:12px">Total MRR</span>
+          <span class="t-green" style="font-size:15px;font-weight:700">${eur(mrr)}</span>
+        </div>
+      </div>`;
+
+    // Conversion
+    const convRate=d.conversion_rate||0;
+    document.getElementById('rev-conversion').innerHTML=`
+      <div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;color:#94a3b8">Taux de conversion essai → payant</span>
+          <span style="font-size:16px;font-weight:700;color:${convRate>=50?'#34d399':convRate>=25?'#fbbf24':'#f87171'}">${convRate}%</span>
+        </div>
+        <div class="prog-wrap"><div class="prog-bar" style="width:${convRate}%;background:${convRate>=50?'#34d399':convRate>=25?'#fbbf24':'#f87171'}"></div></div>
+      </div>
+      <div class="detail-grid" style="gap:10px 20px">
+        <div class="detail-item"><label>Total essais</label><span>${d.total_trials||0}</span></div>
+        <div class="detail-item"><label>Convertis</label><span class="t-green">${d.converted||0}</span></div>
+        <div class="detail-item"><label>Churn ce mois</label><span class="t-red">${d.churn_this_month||0}</span></div>
+        <div class="detail-item"><label>Non convertis</label><span class="t-amber">${(d.total_trials||0)-(d.converted||0)}</span></div>
+      </div>`;
+
+    // Chart inscriptions
+    renderBarChart(d.mrr_history||[]);
+  }catch(err){
+    setErr('err-revenue',err.message);
+  }
+}
+
+function renderBarChart(data){
+  const wrap=document.getElementById('rev-chart');
+  if(!data.length){wrap.innerHTML=`<div class="state-empty">Pas encore de données historiques</div>`;return;}
+  const W=700,H=160,padL=10,padR=10,padT=10,padB=30;
+  const maxC=Math.max(...data.map(d=>d.new_clients),1);
+  const bW=Math.floor((W-padL-padR)/data.length)-4;
+
+  let bars='', labels='';
+  data.forEach((row,i)=>{
+    const x=padL+i*((W-padL-padR)/data.length);
+    const h=Math.max(2,Math.round((row.new_clients/maxC)*(H-padT-padB)));
+    const y=padT+(H-padT-padB)-h;
+    const hPay=Math.max(0,Math.round((row.new_paying/maxC)*(H-padT-padB)));
+    const yPay=padT+(H-padT-padB)-hPay;
+    const cx=x+bW/2;
+    bars+=`<rect x="${x+1}" y="${y}" width="${bW}" height="${h}" rx="3" fill="#1e3a5f"
+      onmouseenter="showTip(event,'${row.month} — ${row.new_clients} inscrits dont ${row.new_paying} payants')"
+      onmouseleave="hideTip()"/>`;
+    if(hPay>0) bars+=`<rect x="${x+1}" y="${yPay}" width="${bW}" height="${hPay}" rx="3" fill="#4f46e5" style="pointer-events:none"/>`;
+    if(i%2===0||data.length<=6) labels+=`<text x="${cx}" y="${H-6}" text-anchor="middle" font-size="10" fill="#374151">${row.month.slice(5)}</text>`;
+  });
+
+  wrap.innerHTML=`
+    <div style="display:flex;gap:16px;margin-bottom:12px;padding:0 4px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4b5563"><span style="width:12px;height:8px;background:#1e3a5f;border-radius:2px;display:inline-block"></span>Inscrits</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4b5563"><span style="width:12px;height:8px;background:#4f46e5;border-radius:2px;display:inline-block"></span>Payants</div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block">${bars}${labels}</svg>`;
+}
+
+function showTip(e,txt){
+  const t=document.getElementById('tooltip');
+  t.textContent=txt; t.style.display='block';
+  t.style.left=(e.pageX+12)+'px'; t.style.top=(e.pageY-28)+'px';
+}
+function hideTip(){document.getElementById('tooltip').style.display='none';}
+
+// ═══════════════════════════════════════════════════════
+// MONITORING
+// ═══════════════════════════════════════════════════════
+async function loadMonitoringBadge(){
+  try{
+    const d=await apiFetch('/admin/monitoring');
+    const n=(d.expiring_soon?.length||0)+(d.high_usage?.length||0);
+    const badge=document.getElementById('badge-monitoring');
+    if(n>0){badge.textContent=n;badge.style.display='inline-block';}
+    else badge.style.display='none';
+  }catch(_){}
+}
+
+async function loadMonitoring(){
+  setErr('err-monitoring','');
+  ['mon-expiring','mon-lost','mon-quota','mon-recent'].forEach(id=>{
+    document.getElementById(id).innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  });
+  try{
+    const d=await apiFetch('/admin/monitoring');
+
+    // Badge
+    const n=(d.expiring_soon?.length||0)+(d.high_usage?.length||0);
+    const badge=document.getElementById('badge-monitoring');
+    badge.textContent=n; badge.style.display=n>0?'inline-block':'none';
+
+    // Expiring soon
+    document.getElementById('mon-expiring-count').textContent=`${d.expiring_soon?.length||0} compte${(d.expiring_soon?.length||0)!==1?'s':''}`;
+    document.getElementById('mon-expiring').innerHTML=d.expiring_soon?.length
+      ?d.expiring_soon.map(e=>`
+          <div style="padding:12px 20px;border-bottom:1px solid #1e2235;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div>
+              <div class="t-strong">${esc(e.nom)}</div>
+              <div style="font-size:12px;color:#4b5563">${esc(e.email||e.siret)} — ${planBadge(e.plan)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <span class="badge ${e.days_left<=2?'b-red':'b-amber'}">${e.days_left}j restants</span>
+              <button class="btn-sm btn-ok" onclick="quickRelance('${jsAttr(e.siret)}','${jsAttr(e.email||'')}')">📧 Relance</button>
+              <button class="btn-sm btn-ok" onclick="quickExtend('${jsAttr(e.siret)}','${jsAttr(e.nom)}')">+30j</button>
+            </div>
+          </div>`).join('')
+      :`<div class="state-empty" style="padding:24px">✓ Aucun essai expirant dans 7 jours</div>`;
+
+    // Expired unconverted
+    document.getElementById('mon-lost-count').textContent=`${d.expired_unconverted?.length||0} compte${(d.expired_unconverted?.length||0)!==1?'s':''}`;
+    document.getElementById('mon-lost').innerHTML=d.expired_unconverted?.length
+      ?`<table style="font-size:12px"><thead><tr><th>Entreprise</th><th>Email</th><th>Expiré le</th><th>Depuis</th><th></th></tr></thead><tbody>`+
+        d.expired_unconverted.map(e=>`<tr>
+          <td class="t-strong">${esc(e.nom)}</td>
+          <td class="t-muted">${esc(e.email||'—')}</td>
+          <td>${dt(e.trial_ends_at)}</td>
+          <td><span class="badge b-gray">${e.days_since_expired}j</span></td>
+          <td><button class="btn-sm" onclick="quickRelance('${jsAttr(e.siret)}','${jsAttr(e.email||'')}')">📧</button></td>
+          </tr>`).join('')+`</tbody></table>`
+      :`<div class="state-empty" style="padding:24px">✓ Aucun essai expiré non converti</div>`;
+
+    // High usage
+    document.getElementById('mon-quota').innerHTML=d.high_usage?.length
+      ?d.high_usage.map(e=>`
+          <div style="padding:14px 20px;border-bottom:1px solid #1e2235">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <div><span class="t-strong">${esc(e.nom)}</span> ${planBadge(e.plan)}</div>
+              <span style="font-size:12px;color:#fbbf24">${e.factures_ce_mois}/${e.quota||'∞'} factures</span>
+            </div>
+            <div class="prog-wrap"><div class="prog-bar" style="width:${Math.min(100,e.pct)}%;background:${e.pct>=90?'#dc2626':e.pct>=70?'#d97706':'#4f46e5'}"></div></div>
+            <div style="font-size:11px;color:#4b5563;margin-top:4px">${e.pct}% du quota mensuel utilisé</div>
+          </div>`).join('')
+      :`<div class="state-empty" style="padding:24px">✓ Aucun compte proche de sa limite</div>`;
+
+    // Recent paying
+    document.getElementById('mon-recent').innerHTML=d.recent_paying?.length
+      ?d.recent_paying.map(e=>`
+          <div style="padding:10px 20px;border-bottom:1px solid #1e2235;display:flex;align-items:center;justify-content:space-between">
+            <div><div class="t-strong">${esc(e.nom)}</div><div class="t-muted" style="font-size:11px">${esc(e.siret)}</div></div>
+            <div style="text-align:right">${planBadge(e.plan)}<div class="t-muted" style="font-size:11px;margin-top:3px">${dt(e.updated_at)}</div></div>
+          </div>`).join('')
+      :`<div class="state-empty" style="padding:24px">Aucune conversion ce mois</div>`;
+
+  }catch(err){
+    setErr('err-monitoring',err.message);
+  }
+}
+
+// Relance rapide depuis monitoring/dashboard
+async function quickRelance(siret,email){
+  if(!email){alert('Aucun email renseigné pour ce compte.');return;}
+  if(!confirm(`Envoyer un email de relance à ${email} ?`)) return;
+  try{
+    const d=await apiFetch(`/admin/entreprises/${siret}/relance`,{method:'POST'});
+    if(d.sent) alert('✓ Email envoyé à '+email);
+    else alert('Email simulé (RESEND_API_KEY non configuré) — vérifiez les logs Render');
+  }catch(e){alert('Erreur : '+e.message);}
+}
+
+// Prolonger essai rapide
+async function quickExtend(siret,nom){
+  if(!confirm(`Prolonger l'essai de "${nom}" de 30 jours ?`)) return;
+  try{
+    await apiFetch(`/admin/entreprises/${siret}/trial`,{method:'PATCH',body:JSON.stringify({days:30})});
+    loadDashboard();
+    loadMonitoringBadge();
+  }catch(e){alert('Erreur : '+e.message);}
+}
+
+// ═══════════════════════════════════════════════════════
+// ENTREPRISES
+// ═══════════════════════════════════════════════════════
+async function loadEntreprises(page){
+  pageEnt=page;
+  setErr('err-entreprises','');
+  const search=document.getElementById('ent-search').value.trim();
+  const plan=document.getElementById('ent-plan').value;
+  const params=new URLSearchParams({page,limit:15,...(search?{search}:{}),...(plan?{plan}:{})});
+  document.getElementById('ent-tbody').innerHTML=`<tr><td colspan="8" class="state-loading"><div class="spinner"></div></td></tr>`;
+  try{
+    const d=await apiFetch(`/admin/entreprises?${params}`);
+    document.getElementById('ent-count').textContent=`${d.total} compte${d.total!==1?'s':''}`;
+    document.getElementById('ent-tbody').innerHTML=d.data.length===0
+      ?`<tr><td colspan="8" class="state-empty">Aucune entreprise trouvée</td></tr>`
+      :d.data.map(e=>{
+        const trial=e.trial_ends_at?new Date(e.trial_ends_at):null;
+        const dLeft=trial?Math.ceil((trial-Date.now())/86400000):null;
+        const trialHtml=trial
+          ?(dLeft>0?`<span class="badge b-amber">${dLeft}j</span>`:`<span class="badge b-gray">Expiré</span>`)
+          :'—';
+        return `<tr>
+          <td class="t-strong">${esc(e.nom)}</td>
+          <td class="mono">${esc(e.siret)}</td>
+          <td>${planBadge(e.plan)}</td>
+          <td>${e.nb_factures||0}</td>
+          <td class="t-green">${eur(e.ca_ttc_total)}</td>
+          <td>${trialHtml}</td>
+          <td class="t-muted">${dt(e.created_at)}</td>
+          <td style="white-space:nowrap">
+            <button class="btn-sm" onclick="showEntDetail('${jsAttr(e.siret)}')">Détail</button>
+            <button class="btn-sm btn-del" style="margin-left:4px" onclick="deleteEnt('${jsAttr(e.siret)}','${jsAttr(e.nom)}')">✕</button>
+          </td></tr>`;
+      }).join('');
+    pg('ent-pagination',d.page,d.pages,'loadEntreprises');
+  }catch(err){
+    setErr('err-entreprises',err.message);
+    document.getElementById('ent-tbody').innerHTML=`<tr><td colspan="8" class="state-empty">Erreur de chargement</td></tr>`;
+  }
+}
+
+function resetEntFilters(){
+  document.getElementById('ent-search').value='';
+  document.getElementById('ent-plan').value='';
+  loadEntreprises(1);
+}
+
+function showCreateEnt(){
+  document.getElementById('modal-title').textContent='Nouveau client';
+  document.getElementById('modal-body').innerHTML=`
+    <div id="modal-msg"></div>
+    <div style="display:grid;gap:12px">
+      <input id="new-ent-nom" class="f-inp" placeholder="Nom entreprise"/>
+      <input id="new-ent-siret" class="f-inp" placeholder="SIRET 14 chiffres" maxlength="14"/>
+      <input id="new-ent-email" class="f-inp" placeholder="Email"/>
+      <input id="new-ent-pass" class="f-inp" placeholder="Mot de passe" value="motdepasse123"/>
+      <button class="f-btn" onclick="createEnt()">Creer</button>
+    </div>`;
+  document.getElementById('modal').style.display='flex';
+}
+
+async function createEnt(){
+  const body={
+    nom:document.getElementById('new-ent-nom').value.trim(),
+    siret:document.getElementById('new-ent-siret').value.replace(/\D/g,'').slice(0,14),
+    email:document.getElementById('new-ent-email').value.trim(),
+    password:document.getElementById('new-ent-pass').value,
+  };
+  try{
+    await apiFetch('/admin/entreprises',{method:'POST',body:JSON.stringify(body)});
+    setOk('modal-msg','Client cree');
+    loadEntreprises(1);
+  }catch(e){setErr('modal-msg',e.message);}
+}
+
+async function showEntDetail(siret){
+  document.getElementById('modal-title').textContent='Chargement…';
+  document.getElementById('modal-body').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
+  document.getElementById('modal').style.display='flex';
+  try{
+    const d=await apiFetch(`/admin/entreprises/${siret}`);
+    const e=d.entreprise, s=d.stats;
+    const trial=e.trial_ends_at?new Date(e.trial_ends_at):null;
+    const daysLeft=trial?Math.ceil((trial-Date.now())/86400000):null;
+
+    document.getElementById('modal-title').textContent=e.nom;
+    document.getElementById('modal-body').innerHTML=`
+      <div id="modal-msg"></div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>SIRET</label><span class="mono">${esc(e.siret)}</span></div>
+        <div class="detail-item"><label>Email</label><span class="t-blue">${esc(e.email||'—')}</span></div>
+        <div class="detail-item"><label>Plan actuel</label><span>${planBadge(e.plan)}</span></div>
+        <div class="detail-item"><label>Fin d'essai</label><span>${trial?`${dt(e.trial_ends_at)} (${daysLeft>0?daysLeft+'j restants':'<span class="t-red">expiré</span>'})`:('—')}</span></div>
+        <div class="detail-item"><label>CA TTC</label><span class="t-green">${eur(s.ca_ttc)}</span></div>
+        <div class="detail-item"><label>Factures totales</label><span>${s.total} (${s.acceptees} acc. / ${s.rejetees} rej.)</span></div>
+        <div class="detail-item"><label>Ce mois</label><span>${s.ce_mois||0} factures</span></div>
+        <div class="detail-item"><label>Stripe Customer</label><span class="mono" style="font-size:11px">${esc(e.stripe_customer_id||'—')}</span></div>
+        <div class="detail-item"><label>Inscription</label><span class="t-muted">${dt(e.created_at)}</span></div>
+        <div class="detail-item"><label>Dernière MAJ</label><span class="t-muted">${dt(e.updated_at)}</span></div>
+      </div>
+
+      <div class="modal-sub">⚡ Actions administrateur</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <!-- Changer le plan -->
+        <div style="background:#12141f;border:1px solid #1e2235;border-radius:10px;padding:16px">
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px">CHANGER LE PLAN</div>
+          <div style="display:flex;gap:8px">
+            <select id="modal-plan-sel" class="f-sel" style="flex:1">
+              ${['gratuit','solo','pro','equipe','business'].map(p=>`<option value="${p}" ${e.plan===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
+            </select>
+            <button class="f-btn" onclick="modalChangePlan('${jsAttr(e.siret)}')">Appliquer</button>
+          </div>
+        </div>
+        <!-- Prolonger essai -->
+        <div style="background:#12141f;border:1px solid #1e2235;border-radius:10px;padding:16px">
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px">PROLONGER L'ESSAI</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="modal-trial-days" type="number" class="action-inp" value="30" min="1" max="365"/>
+            <span style="font-size:12px;color:#4b5563">jours</span>
+            <button class="f-btn f-btn-green" onclick="modalExtendTrial('${jsAttr(e.siret)}')">Prolonger</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Envoyer relance -->
+      <div style="background:#12141f;border:1px solid #1e2235;border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px">EMAIL DE RELANCE MANUEL — vers ${e.email?esc(e.email):'<span class="t-red">aucun email renseigné</span>'}</div>
+        <textarea id="modal-relance-msg" style="width:100%;background:#0d0f1a;border:1px solid #2d3148;border-radius:7px;color:#e2e8f0;font-size:13px;padding:10px;resize:vertical;min-height:70px;outline:none" placeholder="Message personnalisé (optionnel — laissez vide pour le message par défaut)"></textarea>
+        <div style="margin-top:8px;text-align:right">
+          <button class="f-btn f-btn-amber" onclick="modalSendRelance('${jsAttr(e.siret)}')" ${!e.email?'disabled':''}>📧 Envoyer la relance</button>
+        </div>
+      </div>
+
+      <div class="modal-sub">Dernières factures</div>
+      ${d.factures.length===0
+        ?`<div class="state-empty" style="padding:16px">Aucune facture</div>`
+        :`<table><thead><tr><th>Numéro</th><th>Client</th><th>TTC</th><th>Statut</th><th>Date</th></tr></thead>
+          <tbody>${d.factures.slice(0,10).map(f=>`
+            <tr>
+              <td class="mono">${esc(f.numero||'—')}</td>
+              <td>${esc(f.client_nom||'—')}</td>
+              <td class="t-green">${eur(f.montant_ttc)}</td>
+              <td>${statutBadge(f.statut)}</td>
+              <td class="t-muted">${dt(f.date_emission)}</td>
+            </tr>`).join('')}
+          </tbody></table>`}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #252840;text-align:right">
+        <button class="f-btn f-btn-red" onclick="deleteEnt('${jsAttr(e.siret)}','${jsAttr(e.nom)}')">🗑 Supprimer ce compte</button>
+      </div>`;
+  }catch(err){
+    document.getElementById('modal-body').innerHTML=`<div class="alert-err">${esc(err.message)}</div>`;
+  }
+}
+
+async function modalChangePlan(siret){
+  const plan=document.getElementById('modal-plan-sel').value;
+  try{
+    await apiFetch(`/admin/entreprises/${siret}/plan`,{method:'PATCH',body:JSON.stringify({plan})});
+    setOk('modal-msg',`Plan changé → ${plan}`);
+    loadEntreprises(pageEnt);
+  }catch(e){setErr('modal-msg',e.message);}
+}
+
+async function modalExtendTrial(siret){
+  const days=parseInt(document.getElementById('modal-trial-days').value,10);
+  try{
+    const d=await apiFetch(`/admin/entreprises/${siret}/trial`,{method:'PATCH',body:JSON.stringify({days})});
+    const newEnd=d.entreprise?.trial_ends_at?new Date(d.entreprise.trial_ends_at).toLocaleDateString('fr-FR'):'—';
+    setOk('modal-msg',`Essai prolongé de ${days} jours (fin : ${newEnd})`);
+    loadEntreprises(pageEnt);
+  }catch(e){setErr('modal-msg',e.message);}
+}
+
+async function modalSendRelance(siret){
+  const msg=document.getElementById('modal-relance-msg').value.trim();
+  try{
+    const d=await apiFetch(`/admin/entreprises/${siret}/relance`,{method:'POST',body:JSON.stringify({message:msg||undefined})});
+    if(d.sent) setOk('modal-msg',`Email envoyé à ${d.to}`);
+    else setOk('modal-msg','Email simulé en log (RESEND_API_KEY non configuré)');
+  }catch(e){setErr('modal-msg',e.message);}
+}
+
+async function deleteEnt(siret,nom){
+  if(!confirm(`Supprimer "${nom}" (${siret}) et TOUTES ses données ?\n\nCette action est irréversible.`)) return;
+  try{
+    await apiFetch(`/admin/entreprises/${siret}`,{method:'DELETE'});
+    closeModal();
+    loadEntreprises(pageEnt);
+    loadDashboard();
+  }catch(err){alert('Erreur suppression : '+err.message);}
+}
+
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+// ═══════════════════════════════════════════════════════
+// FACTURES
+// ═══════════════════════════════════════════════════════
+async function loadFactures(page){
+  pageFact=page;
+  setErr('err-factures','');
+  const statut=document.getElementById('fact-statut').value;
+  const siret=document.getElementById('fact-siret').value.trim();
+  const from=document.getElementById('fact-from').value;
+  const to=document.getElementById('fact-to').value;
+  const params=new URLSearchParams({page,limit:20,...(statut?{statut}:{}),...(siret?{siret}:{}),...(from?{date_from:from}:{}),...(to?{date_to:to}:{})});
+  document.getElementById('fact-tbody').innerHTML=`<tr><td colspan="7" class="state-loading"><div class="spinner"></div></td></tr>`;
+  try{
+    const d=await apiFetch(`/admin/factures?${params}`);
+    document.getElementById('fact-count').textContent=`${d.total} facture${d.total!==1?'s':''}`;
+    document.getElementById('fact-tbody').innerHTML=d.data.length===0
+      ?`<tr><td colspan="7" class="state-empty">Aucune facture</td></tr>`
+      :d.data.map(f=>`<tr>
+          <td class="mono">${esc(f.numero||'—')}</td>
+          <td class="t-strong">${esc(f.emetteur_nom||f.emetteur_siret)}</td>
+          <td>${esc(f.client_nom||'—')}</td>
+          <td class="t-green" style="font-weight:600">${eur(f.montant_ttc)}</td>
+          <td>${statutBadge(f.statut)}</td>
+          <td class="t-muted">${dt(f.date_emission)}</td>
+          <td class="mono" style="font-size:11px;color:#374151">${esc(f.chorus_id||'—')}</td>
+        </tr>`).join('');
+    pg('fact-pagination',d.page,d.pages,'loadFactures');
+  }catch(err){
+    setErr('err-factures',err.message);
+    document.getElementById('fact-tbody').innerHTML=`<tr><td colspan="7" class="state-empty">Erreur</td></tr>`;
+  }
+}
+
+function resetFactFilters(){
+  document.getElementById('fact-statut').selectedIndex=0;
+  ['fact-siret','fact-from','fact-to'].forEach(id=>document.getElementById(id).value='');
+  loadFactures(1);
+}
+
+// ═══════════════════════════════════════════════════════
+// ABONNEMENTS
+// ═══════════════════════════════════════════════════════
+async function loadAbonnements(page){
+  pageSub=page;
+  setErr('err-abonnements','');
+  document.getElementById('sub-tbody').innerHTML=`<tr><td colspan="6" class="state-loading"><div class="spinner"></div></td></tr>`;
+  try{
+    const [allData,rev]=await Promise.all([
+      apiFetch('/admin/entreprises?limit=200&page=1'),
+      apiFetch('/admin/revenue').catch(()=>null),
+    ]);
+    const counts={gratuit:0,solo:0,pro:0,equipe:0,business:0};
+    allData.data.forEach(e=>{const p=e.plan||'gratuit';if(p in counts)counts[p]++;});
+
+    document.getElementById('sub-kpis').innerHTML=[
+      ['gratuit','Gratuit','p-gratuit','v-purple'],['solo','Solo','p-solo','v-teal'],
+      ['pro','Pro','p-pro','v-blue'],['equipe','Équipe','p-equipe','v-purple'],
+      ['business','Business','p-business','v-red'],
+    ].map(([key,lbl,cls,vc])=>{
+      const info=rev?.by_plan?.[key]||{count:counts[key],mrr:0};
+      return `<div class="kpi-card clickable" onclick="document.getElementById('sub-plan').value='${key}';loadAbonnements(1)">
+        <div class="kpi-lbl">${lbl}</div>
+        <div class="kpi-val ${vc}" style="font-size:22px">${counts[key]}</div>
+        <div class="kpi-chg">MRR : <span class="up">${eur(info.mrr)}</span></div>
+      </div>`;
+    }).join('');
+
+    const plan=document.getElementById('sub-plan').value;
+    const params=new URLSearchParams({page,limit:20,...(plan?{search:plan}:{})});
+    const d=await apiFetch(`/admin/entreprises?${params}`);
+    document.getElementById('sub-count').textContent=`${d.total} entreprise${d.total!==1?'s':''}`;
+    document.getElementById('sub-tbody').innerHTML=d.data.length===0
+      ?`<tr><td colspan="6" class="state-empty">Aucune entreprise</td></tr>`
+      :d.data.map(e=>{
+        const trial=e.trial_ends_at?new Date(e.trial_ends_at):null;
+        const dLeft=trial?Math.ceil((trial-Date.now())/86400000):null;
+        const trialHtml=trial
+          ?(dLeft>0?`<span class="t-amber">${dt(e.trial_ends_at)} (${dLeft}j)</span>`:`<span class="t-red">Expiré le ${dt(e.trial_ends_at)}</span>`)
+          :'—';
+        return `<tr>
+          <td class="t-strong">${esc(e.nom)}</td>
+          <td class="t-blue">${esc(e.email||'—')}</td>
+          <td>${planBadge(e.plan)}</td>
+          <td>${trialHtml}</td>
+          <td class="mono" style="font-size:11px">${esc(e.stripe_customer_id?e.stripe_customer_id.slice(0,20)+'…':'—')}</td>
+          <td class="t-muted">${dt(e.created_at)}</td>
+        </tr>`;
+      }).join('');
+    pg('sub-pagination',d.page,d.pages,'loadAbonnements');
+  }catch(err){
+    setErr('err-abonnements',err.message);
+    document.getElementById('sub-tbody').innerHTML=`<tr><td colspan="6" class="state-empty">Erreur</td></tr>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SYSTÈME
+// ═══════════════════════════════════════════════════════
+async function checkHealth(){
+  const el=document.getElementById('sys-status');
+  el.textContent='Test en cours…';
+  try{
+    const r=await fetch(`${API}/health`);
+    const d=await r.json();
+    el.innerHTML=`<span class="t-green">✓ En ligne</span> — ${new Date(d.ts).toLocaleTimeString('fr-FR')}`;
+  }catch{
+    el.innerHTML=`<span class="t-red">✗ Hors ligne</span>`;
+  }
+}
+</script>
+</body>
+</html>

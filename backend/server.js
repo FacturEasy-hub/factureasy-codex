@@ -1,0 +1,685 @@
+const fs = require('fs');
+
+function loadEnvFile(file = '.env') {
+  if (!fs.existsSync(file)) return;
+  fs.readFileSync(file, 'utf8').split(/\r?\n/).forEach((line) => {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
+    if (!match || process.env[match[1]] !== undefined) return;
+    process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+  });
+}
+
+loadEnvFile();
+
+// ─── Validation des secrets au démarrage ────────────────────────────────────────
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'factureasy-dev-secret-change-in-prod') {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: JWT_SECRET non défini ou valeur par défaut en production. Arrêt.');
+    process.exit(1);
+  }
+}
+
+const express    = require('express');
+const cors       = require('cors');
+const path       = require('path');
+const http       = require('./services/http');
+const pool       = require('./db');
+const {
+  DEFAULT_ADMIN_SECRET,
+  assertStrongSecret,
+  validateSiret,
+  normalizeEmail,
+  validateEmail,
+  validatePassword,
+  sanitizeText,
+  parsePositiveAmount,
+  parseTva,
+  hashPassword,
+  verifyPassword,
+  safeError,
+} = require('./utils/security');
+
+// ─── Numérotation séquentielle des factures ──────────────────────────────────
+// Garantit une séquence chronologique sans rupture par SIRET (obligation légale)
+async function nextNumeroFacture(siret) {
+  const year = new Date().getFullYear();
+  const prefix = `FE-${year}`;
+
+  // Upsert atomique sur la séquence du SIRET pour l'année courante
+  const { rows } = await pool.query(`
+    INSERT INTO invoice_sequences (siret, year, last_seq)
+    VALUES ($1, $2, 1)
+    ON CONFLICT (siret, year)
+    DO UPDATE SET last_seq = invoice_sequences.last_seq + 1
+    RETURNING last_seq
+  `, [siret, year]);
+
+  const seq = String(rows[0].last_seq).padStart(4, '0');
+  return `${prefix}-${seq}`;
+}
+
+const { generateToken, authenticate, requireAdmin } = require('./middleware/auth');
+const { router: comptableRouter, readOnly } = require('./routes/comptable');
+const ADMIN_SECRET = process.env.ADMIN_SECRET || DEFAULT_ADMIN_SECRET;
+assertStrongSecret('ADMIN_SECRET', ADMIN_SECRET, DEFAULT_ADMIN_SECRET);
+
+const app = express();
+
+// Headers de sécurité minimum même si helmet n'est pas installé
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
+// ─── Sécurité : helmet ─────────────────────────────────────────────────────────
+try {
+  const helmet = require('helmet');
+  // CSP désactivée sur /backoffice (panel admin avec scripts inline)
+  const relaxedHelmet = helmet({ contentSecurityPolicy: false });
+  const strictHelmet = helmet();
+  app.use('/backoffice', relaxedHelmet);
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/backoffice')) return next();
+    return strictHelmet(req, res, next);
+  });
+} catch (_) { /* helmet optionnel — npm install helmet */ }
+
+// ─── Rate limiting sur /auth/* ─────────────────────────────────────────────────
+try {
+  const rateLimit = require('express-rate-limit');
+  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20,
+    message: { error: 'Trop de tentatives. Réessayez dans 15 minutes.' } });
+  app.use('/auth', authLimiter);
+} catch (_) { /* express-rate-limit optionnel — npm install express-rate-limit */ }
+
+// ─── CORS restreint aux origines autorisées ────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3001,http://127.0.0.1:3001')
+  .split(',').map(o => o.trim());
+app.use(cors({
+  origin: function(origin, cb) {
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Autoriser tous les domaines Vercel du projet (previews + production)
+    if (/\.vercel\.app$/.test(origin)) return cb(null, true);
+    // Autoriser le backend lui-même (admin panel servi depuis onrender.com)
+    if (/\.onrender\.com$/.test(origin)) return cb(null, true);
+    cb(new Error('Origin non autorisée par CORS : ' + origin));
+  },
+  credentials: true,
+}));
+
+// ⚠️  /stripe/webhook doit être monté AVANT express.json()
+// car il a besoin du body brut pour vérifier la signature Stripe
+app.use('/stripe', require('./routes/stripe'));
+
+app.use(express.json());
+
+// ─── Chorus Pro OAuth2 ───────────────────────────────────────────────────────
+
+const CHORUS_API   = 'https://chorus-pro.gouv.fr/api';
+const CHORUS_TOKEN = 'https://oauth.chorus-pro.gouv.fr/token';
+
+let _cachedToken = null;
+let _tokenExpiry = 0;
+
+async function getChorusToken() {
+  if (_cachedToken && Date.now() < _tokenExpiry) return _cachedToken;
+  const res = await http.post(CHORUS_TOKEN, new URLSearchParams({
+    grant_type:    'client_credentials',
+    client_id:     process.env.CHORUS_CLIENT_ID,
+    client_secret: process.env.CHORUS_CLIENT_SECRET,
+    scope:         'openid'
+  }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  _cachedToken = res.data.access_token;
+  _tokenExpiry = Date.now() + (res.data.expires_in - 30) * 1000;
+  return _cachedToken;
+}
+
+function chorusHeaders(token) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+// ─── Initialisation DB (admin uniquement) ────────────────────────────────────
+app.get('/init-db', requireAdmin, async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS entreprises (
+        id                     SERIAL PRIMARY KEY,
+        siret                  VARCHAR(14) UNIQUE NOT NULL,
+        nom                    VARCHAR(255) NOT NULL,
+        email                  VARCHAR(255),
+        password_hash          TEXT,
+        -- Stripe
+        stripe_customer_id     VARCHAR(100),
+        stripe_subscription_id VARCHAR(100),
+        plan                   VARCHAR(50) DEFAULT 'gratuit',
+        trial_ends_at          TIMESTAMPTZ,
+        contact_nom            VARCHAR(255),
+        contact_telephone      VARCHAR(50),
+        domaine                VARCHAR(255),
+        kbis_url               TEXT,
+        notes_admin            TEXT,
+        updated_at             TIMESTAMP DEFAULT NOW(),
+        created_at             TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Migration idempotente : ajouter les colonnes Stripe si elles n'existent pas déjà
+      DO $$ BEGIN
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS password_hash          TEXT;
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS stripe_customer_id     VARCHAR(100);
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(100);
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS plan                   VARCHAR(50) DEFAULT 'gratuit';
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS trial_ends_at          TIMESTAMPTZ;
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS contact_nom            VARCHAR(255);
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS contact_telephone      VARCHAR(50);
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS domaine                VARCHAR(255);
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS kbis_url               TEXT;
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS notes_admin            TEXT;
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS updated_at             TIMESTAMP DEFAULT NOW();
+      EXCEPTION WHEN duplicate_column THEN NULL;
+      END $$;
+
+      CREATE TABLE IF NOT EXISTS factures (
+        id                    SERIAL PRIMARY KEY,
+        numero                VARCHAR(50) UNIQUE NOT NULL,
+        emetteur_siret        VARCHAR(14) NOT NULL,
+        client_siret          VARCHAR(14) NOT NULL,
+        client_nom            VARCHAR(255) NOT NULL,
+        description           TEXT,
+        montant_ht            NUMERIC(12,2) NOT NULL,
+        tva                   NUMERIC(5,2) DEFAULT 20,
+        montant_ttc           NUMERIC(12,2) NOT NULL,
+        statut                VARCHAR(50) DEFAULT 'EMISE',
+        chorus_id             VARCHAR(100),
+        type_document         VARCHAR(10) DEFAULT 'FAC',
+        avoir_de_facture_id   INTEGER REFERENCES factures(id),
+        date_emission         TIMESTAMP DEFAULT NOW(),
+        updated_at            TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Colonnes optionnelles ajoutées en migration (idempotentes)
+      DO $$ BEGIN
+        ALTER TABLE factures ADD COLUMN IF NOT EXISTS type_document VARCHAR(10) DEFAULT 'FAC';
+        ALTER TABLE factures ADD COLUMN IF NOT EXISTS avoir_de_facture_id INTEGER REFERENCES factures(id);
+      EXCEPTION WHEN duplicate_column THEN NULL;
+      END $$;
+
+      -- Séquences de numérotation légale par SIRET et année
+      CREATE TABLE IF NOT EXISTS invoice_sequences (
+        siret    VARCHAR(14) NOT NULL,
+        year     INTEGER     NOT NULL,
+        last_seq INTEGER     DEFAULT 0,
+        PRIMARY KEY (siret, year)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_factures_siret  ON factures(emetteur_siret);
+      CREATE INDEX IF NOT EXISTS idx_factures_statut ON factures(statut);
+
+      CREATE TABLE IF NOT EXISTS clients (
+        id            SERIAL PRIMARY KEY,
+        siret         VARCHAR(14) NOT NULL,
+        nom           VARCHAR(255) NOT NULL,
+        siret_client  VARCHAR(14),
+        email         VARCHAR(255),
+        telephone     VARCHAR(50),
+        adresse       TEXT,
+        created_at    TIMESTAMPTZ DEFAULT NOW(),
+        updated_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_clients_siret ON clients(siret);
+
+      -- ── Catalogue produits/services ────────────────────────────────────────
+      CREATE TABLE IF NOT EXISTS catalogue (
+        id              SERIAL PRIMARY KEY,
+        siret           VARCHAR(14)   NOT NULL,
+        reference       VARCHAR(100),
+        nom             VARCHAR(255)  NOT NULL,
+        description     TEXT,
+        prix_ht         NUMERIC(12,2) NOT NULL DEFAULT 0,
+        tva_taux        NUMERIC(5,2)  NOT NULL DEFAULT 20,
+        unite           VARCHAR(50)   DEFAULT 'unité',
+        code_comptable  VARCHAR(50),
+        actif           BOOLEAN       DEFAULT TRUE,
+        created_at      TIMESTAMPTZ   DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ   DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_catalogue_siret ON catalogue(siret);
+
+      -- ── Devis ──────────────────────────────────────────────────────────────
+      CREATE TABLE IF NOT EXISTS devis_sequences (
+        siret    VARCHAR(14) NOT NULL,
+        year     INTEGER     NOT NULL,
+        last_seq INTEGER     DEFAULT 0,
+        PRIMARY KEY (siret, year)
+      );
+      CREATE TABLE IF NOT EXISTS devis (
+        id              SERIAL PRIMARY KEY,
+        numero          VARCHAR(50)   UNIQUE NOT NULL,
+        siret           VARCHAR(14)   NOT NULL,
+        client_siret    VARCHAR(14),
+        client_nom      VARCHAR(255)  NOT NULL,
+        client_email    VARCHAR(255),
+        client_adresse  TEXT,
+        objet           VARCHAR(255),
+        montant_ht      NUMERIC(12,2) NOT NULL DEFAULT 0,
+        tva_taux        NUMERIC(5,2)  DEFAULT 20,
+        montant_ttc     NUMERIC(12,2) NOT NULL DEFAULT 0,
+        statut          VARCHAR(20)   DEFAULT 'BROUILLON',
+        date_emission   DATE          DEFAULT CURRENT_DATE,
+        date_validite   DATE,
+        notes           TEXT,
+        facture_id      INTEGER,
+        created_at      TIMESTAMPTZ   DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ   DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS devis_lignes (
+        id               SERIAL PRIMARY KEY,
+        devis_id         INTEGER       NOT NULL REFERENCES devis(id) ON DELETE CASCADE,
+        description      TEXT          NOT NULL,
+        quantite         NUMERIC(10,3) DEFAULT 1,
+        prix_unitaire_ht NUMERIC(12,2) NOT NULL,
+        tva_taux         NUMERIC(5,2)  DEFAULT 20,
+        montant_ht       NUMERIC(12,2) NOT NULL,
+        unite            VARCHAR(50)   DEFAULT 'unité',
+        catalogue_id     INTEGER,
+        ordre            INTEGER       DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_devis_siret  ON devis(siret);
+      CREATE INDEX IF NOT EXISTS idx_devis_lignes ON devis_lignes(devis_id);
+    `);
+    res.json({ ok: true, message: 'Schéma initialisé' });
+  } catch (err) {
+    console.error('[init-db]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Authentification ────────────────────────────────────────────────────────
+
+// POST /auth/login — crée ou récupère une entreprise et retourne un JWT
+app.post('/auth/login', async (req, res) => {
+  try {
+    const siret = sanitizeText(req.body.siret, 14);
+    const nom = sanitizeText(req.body.nom, 255);
+    const email = normalizeEmail(req.body.email);
+    const password = req.body.password;
+
+    if (!validateSiret(siret)) return res.status(400).json({ error: 'SIRET invalide — 14 chiffres attendus' });
+    if (!nom) return res.status(400).json({ error: 'Nom ou raison sociale requis' });
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Email professionnel valide requis' });
+    if (!validatePassword(password)) return res.status(400).json({ error: 'Mot de passe requis — 8 caractères minimum' });
+
+    const existing = await pool.query('SELECT * FROM entreprises WHERE siret = $1', [siret]);
+    let entreprise;
+
+    if (!existing.rows[0]) {
+      const passwordHash = hashPassword(password);
+      const created = await pool.query(
+        `INSERT INTO entreprises (siret, nom, email, password_hash)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at`,
+        [siret, nom, email, passwordHash]
+      );
+      entreprise = created.rows[0];
+    } else {
+      const row = existing.rows[0];
+      if (!row.password_hash || !verifyPassword(password, row.password_hash)) {
+        return res.status(401).json({ error: 'Identifiants invalides' });
+      }
+      const updated = await pool.query(
+        `UPDATE entreprises SET nom = $2, email = COALESCE($3, email), updated_at = NOW()
+         WHERE siret = $1
+         RETURNING id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at`,
+        [siret, nom, email]
+      );
+      entreprise = updated.rows[0];
+    }
+
+    const token = generateToken({ siret: entreprise.siret, nom: entreprise.nom, id: entreprise.id, email: entreprise.email, role: 'user' });
+    res.json({ token, entreprise });
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[auth/login]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
+
+// ─── Auth : profil courant ────────────────────────────────────────────────────
+
+// GET /auth/me — retourne l'entreprise connectée (plan, trial_ends_at, etc.)
+app.get('/auth/me', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at
+       FROM entreprises WHERE siret = $1`,
+      [req.user.siret]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[GET /auth/me]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Entreprises ─────────────────────────────────────────────────────────────
+
+app.post('/entreprises', authenticate, async (req, res) => {
+  try {
+    const siret = sanitizeText(req.body.siret, 14);
+    const nom = sanitizeText(req.body.nom, 255);
+    const email = normalizeEmail(req.body.email);
+    if (req.user.role !== 'admin' && siret !== req.user.siret) return res.status(403).json({ error: 'Accès interdit à cette entreprise' });
+    if (!validateSiret(siret) || !nom) return res.status(400).json({ error: 'SIRET et nom valides requis' });
+    if (email && !validateEmail(email)) return res.status(400).json({ error: 'Email invalide' });
+    const { rows } = await pool.query(
+      `UPDATE entreprises SET nom=$2, email=COALESCE($3, email), updated_at=NOW()
+       WHERE siret=$1
+       RETURNING id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at`,
+      [siret, nom, email || null]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
+    res.json(rows[0]);
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[POST /entreprises]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
+
+app.get('/entreprises/:siret', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin' && req.params.siret !== req.user.siret) {
+      return res.status(403).json({ error: 'Accès interdit à cette entreprise' });
+    }
+    const { rows } = await pool.query(
+      'SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = $1',
+      [req.params.siret]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[GET /entreprises]', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Bloque les mutations pour les accès expert-comptable en lecture seule
+// Clients de l'entreprise connectee
+app.get('/clients', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, nom, siret_client, email, telephone, adresse, created_at, updated_at
+       FROM clients WHERE siret = $1 ORDER BY nom ASC`,
+      [req.user.siret]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /clients]', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/clients', authenticate, async (req, res) => {
+  try {
+    const nom = sanitizeText(req.body.nom, 255);
+    const siretClient = sanitizeText(req.body.siret_client || '', 14);
+    const email = normalizeEmail(req.body.email || '');
+    const telephone = sanitizeText(req.body.telephone || '', 50);
+    const adresse = sanitizeText(req.body.adresse || '', 1000);
+
+    if (!nom) return res.status(400).json({ error: 'Nom client requis' });
+    if (siretClient && !validateSiret(siretClient)) return res.status(400).json({ error: 'SIRET client invalide' });
+    if (email && !validateEmail(email)) return res.status(400).json({ error: 'Email client invalide' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO clients (siret, nom, siret_client, email, telephone, adresse)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, nom, siret_client, email, telephone, adresse, created_at, updated_at`,
+      [req.user.siret, nom, siretClient || null, email || null, telephone || null, adresse || null]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[POST /clients]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
+
+app.use(['/factures', '/finances', '/stats'], authenticate, readOnly);
+
+// ─── Factures ────────────────────────────────────────────────────────────────
+
+app.get('/factures', authenticate, async (req, res) => {
+  try {
+    // IDOR fix: siret forcé depuis le JWT, le query param est ignoré
+    const siret = req.user.siret;
+    const { statut } = req.query;
+    let query = 'SELECT * FROM factures WHERE emetteur_siret = $1';
+    const params = [siret];
+    if (statut) { query += ' AND statut = $2'; params.push(statut); }
+    query += ' ORDER BY date_emission DESC';
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /factures]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/factures/:id(\\d+)', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM factures WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Facture introuvable' });
+    // IDOR fix: vérifier que la facture appartient à l'entreprise connectée
+    if (rows[0].emetteur_siret !== req.user.siret) {
+      return res.status(403).json({ error: 'Accès interdit à cette facture' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[GET /factures/:id]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/factures', authenticate, async (req, res) => {
+  try {
+    const client_siret = sanitizeText(req.body.client_siret, 14);
+    const client_nom = sanitizeText(req.body.client_nom, 255);
+    const description = sanitizeText(req.body.description, 1000);
+    const numero_engagement = sanitizeText(req.body.numero_engagement, 100);
+    const montant_ht = parsePositiveAmount(req.body.montant_ht, 'montant_ht');
+    const tva = parseTva(req.body.tva === undefined ? 20 : req.body.tva);
+    // IDOR fix: emetteur_siret forcé depuis le JWT
+    const emetteur_siret = req.user.siret;
+    if (!validateSiret(client_siret) || !client_nom) {
+      return res.status(400).json({ error: 'Champs requis : client_siret valide, client_nom, montant_ht' });
+    }
+
+    const montant_ttc = parseFloat((montant_ht * (1 + tva / 100)).toFixed(2));
+    const montant_tva = parseFloat((montant_ht * tva / 100).toFixed(2));
+    const numero      = await nextNumeroFacture(emetteur_siret);
+    const date_emission = new Date().toISOString().split('T')[0];
+
+    // Si pas de credentials Chorus Pro -> facture preparee localement, pas de fausse connexion.
+    if (!process.env.CHORUS_CLIENT_ID) {
+      const { rows } = await pool.query(
+        `INSERT INTO factures
+          (numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, statut, chorus_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'BROUILLON',NULL) RETURNING *`,
+        [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc]
+      );
+      return res.status(201).json(rows[0]);
+    }
+
+    const token = await getChorusToken();
+    const payload = {
+      codeFournisseur:  emetteur_siret,
+      codeDestinataire: client_siret,
+      numeroFacture:    numero,
+      dateFacture:      date_emission,
+      montantHT:        montant_ht,
+      montantTVA:       montant_tva,
+      montantTTC:       montant_ttc,
+      typeFacture:      'FAC',
+      lignes: [{
+        numeroLigne:    1,
+        designation:    description || 'Prestation de service',
+        quantite:       1,
+        prixUnitaireHT: montant_ht,
+        tauxTVA:        tva,
+        montantHT:      montant_ht
+      }]
+    };
+    if (numero_engagement) payload.numeroEngagement = numero_engagement;
+
+    const chorusRes = await http.post(
+      `${CHORUS_API}/cpro/factures/v1/deposer`, payload, { headers: chorusHeaders(token) }
+    );
+    const chorus_id = chorusRes.data.identifiantFactureCPP || chorusRes.data.numeroFactureCPP;
+
+    const { rows } = await pool.query(
+      `INSERT INTO factures
+        (numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, statut, chorus_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'EMISE',$9) RETURNING *`,
+      [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, chorus_id]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    const detail = err.response?.data || err.message;
+    console.error('[POST /factures Chorus]', detail);
+    res.status(502).json({ error: 'Erreur Chorus Pro', detail });
+  }
+});
+
+app.patch('/factures/:id(\\d+)/statut', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM factures WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Facture introuvable' });
+    // IDOR fix: vérifier que la facture appartient à l'entreprise connectée
+    if (rows[0].emetteur_siret !== req.user.siret) {
+      return res.status(403).json({ error: 'Accès interdit à cette facture' });
+    }
+    if (!rows[0].chorus_id) return res.status(400).json({ error: 'Pas de chorus_id — facture non émise via Chorus' });
+
+    const token = await getChorusToken();
+    const chorusRes = await http.get(
+      `${CHORUS_API}/cpro/factures/v1/consulter/identifiant/${rows[0].chorus_id}`,
+      { headers: chorusHeaders(token) }
+    );
+    const statut = chorusRes.data.statut || chorusRes.data.etatFacture;
+    await pool.query('UPDATE factures SET statut = $1, updated_at = NOW() WHERE id = $2', [statut, req.params.id]);
+    res.json({ ...rows[0], statut });
+  } catch (err) {
+    console.error('[PATCH /factures/:id/statut]', err.message);
+    res.status(502).json({ error: 'Impossible de récupérer le statut Chorus Pro', detail: err.message });
+  }
+});
+
+// ─── Statistiques ────────────────────────────────────────────────────────────
+
+app.get('/stats/:siret', authenticate, async (req, res) => {
+  try {
+    // IDOR fix: un utilisateur ne peut consulter que ses propres stats
+    if (req.params.siret !== req.user.siret) {
+      return res.status(403).json({ error: 'Accès interdit à ces statistiques' });
+    }
+    const { rows } = await pool.query(`
+      SELECT
+        COUNT(*)                                          AS total_factures,
+        COALESCE(SUM(montant_ttc), 0)                    AS ca_ttc,
+        COALESCE(SUM(montant_ht), 0)                     AS ca_ht,
+        COUNT(*) FILTER (WHERE statut = 'EMISE')         AS en_attente,
+        COUNT(*) FILTER (WHERE statut = 'ACCEPTEE')      AS acceptees,
+        COUNT(*) FILTER (WHERE statut = 'REJETEE')       AS rejetees,
+        COALESCE(AVG(montant_ht), 0)                     AS panier_moyen_ht
+      FROM factures WHERE emetteur_siret = $1
+    `, [req.params.siret]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[GET /stats]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Login Admin ─────────────────────────────────────────────────────────────
+
+// POST /auth/admin — authentification administrateur
+// Body: { secret: "ADMIN_SECRET" }
+app.post('/auth/admin', (req, res) => {
+  const { secret } = req.body;
+  if (!secret || secret !== ADMIN_SECRET) {
+    return res.status(401).json({ error: 'Secret administrateur invalide' });
+  }
+  const token = generateToken({ role: 'admin', email: 'admin@factureasy.fr' });
+  res.json({ token, role: 'admin' });
+});
+
+// ─── Routes Admin ─────────────────────────────────────────────────────────────
+
+app.use('/admin', require('./routes/admin'));
+
+// ─── Routes Finances ─────────────────────────────────────────────────────────
+
+app.use('/finances', require('./routes/finances'));
+
+// ─── Route SIRENE — autocomplétion entreprise ─────────────────────────────────
+
+app.use('/sirene', require('./routes/sirene'));
+
+// ─── Routes Avoirs — notes de crédit ─────────────────────────────────────────
+// Montées sous /factures/:id/avoir via mergeParams
+
+const avoirsRouter = require('./routes/avoirs');
+app.use('/factures/:id/avoir', avoirsRouter);
+
+// ─── Routes Relances ─────────────────────────────────────────────────────────
+
+app.use('/relances', require('./routes/relances'));
+
+// ─── Routes Factures Récurrentes ─────────────────────────────────────────────
+
+app.use('/factures/recurrentes', require('./routes/recurrentes'));
+
+// ─── Routes Catalogue produits/services ──────────────────────────────────────
+
+app.use('/catalogue', require('./routes/catalogue'));
+
+// ─── Routes Devis ─────────────────────────────────────────────────────────────
+
+app.use('/devis', require('./routes/devis'));
+
+// ─── Routes Comptable (invitations + login read-only) ────────────────────────
+
+app.use('/auth', comptableRouter);
+
+// ─── Backoffice admin (fichier statique servi depuis /backoffice/) ─────────────
+// Accessible à : https://factureasy-backend.onrender.com/backoffice/
+// ⚠️  Les fichiers admin sont dans backend/public/backoffice/ (dans le build context Docker)
+app.use('/backoffice', express.static(path.join(__dirname, 'public/backoffice')));
+
+// ─── Health check ─────────────────────────────────────────────────────────────
+
+app.get('/health', (req, res) => res.json({
+  ok: true,
+  ts: new Date().toISOString(),
+  chorus: {
+    process_ok: true,
+    configured: Boolean(process.env.CHORUS_CLIENT_ID && process.env.CHORUS_CLIENT_SECRET),
+    connected: false,
+    mode: process.env.CHORUS_CLIENT_ID ? 'configured_not_verified' : 'mock',
+  },
+}));
+
+// --- Lancement ---
+
+const PORT = process.env.PORT || 3001;
+if (require.main === module) {
+  app.listen(PORT, function() { console.log('[OK] FacturEasy API demarree sur :' + PORT); });
+}
+
+module.exports = app;

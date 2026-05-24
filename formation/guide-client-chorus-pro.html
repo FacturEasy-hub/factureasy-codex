@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kit d'autonomie Chorus Pro — FacturEasy</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #4f46e5;
+    --brand-dark: #3730a3;
+    --brand-light: #ede9fe;
+    --brand-mid: #6d64f0;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --warning: #d97706;
+    --warning-bg: #fffbeb;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --info-bg: #eff6ff;
+    --info: #2563eb;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(79,70,229,0.10);
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    color: var(--gray-900);
+    background: #f5f4ff;
+    line-height: 1.65;
+    font-size: 15px;
+  }
+
+  /* ---- LAYOUT ---- */
+  .page-wrapper { max-width: 900px; margin: 0 auto; padding: 0 16px 80px; }
+
+  /* ---- HERO ---- */
+  .hero {
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 60%, #7c3aed 100%);
+    color: #fff;
+    padding: 56px 48px 48px;
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 260px; height: 260px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: 30%;
+    width: 180px; height: 180px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+  }
+  .hero-label {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 5vw, 40px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 14px;
+  }
+  .hero p {
+    font-size: 16px;
+    opacity: 0.88;
+    max-width: 560px;
+    margin-bottom: 28px;
+  }
+  .hero-badges {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .hero-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ---- PROGRESS BAR ---- */
+  .progress-section {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 32px 36px;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow);
+  }
+  .progress-section h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+  }
+  .progress-section p {
+    color: var(--gray-600);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .progress-steps {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    position: relative;
+  }
+  .progress-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+  }
+  .progress-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    width: 100%;
+    height: 3px;
+    background: var(--gray-200);
+    z-index: 0;
+  }
+  .progress-step.done:not(:last-child)::after { background: var(--brand); }
+  .step-circle {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--gray-100);
+    border: 3px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--gray-400);
+    position: relative;
+    z-index: 1;
+    transition: all .25s ease;
+  }
+  .progress-step.done .step-circle {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+  }
+  .progress-step.active .step-circle {
+    background: #fff;
+    border-color: var(--brand);
+    color: var(--brand);
+    box-shadow: 0 0 0 4px var(--brand-light);
+  }
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-400);
+    margin-top: 8px;
+    line-height: 1.3;
+    max-width: 80px;
+  }
+  .progress-step.done .step-label,
+  .progress-step.active .step-label { color: var(--brand); }
+
+  /* ---- SECTION CARD ---- */
+  .section-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 32px;
+    border-bottom: 2px solid var(--brand-light);
+    background: linear-gradient(90deg, var(--brand-light) 0%, #fff 100%);
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-icon {
+    width: 48px; height: 48px;
+    background: var(--brand);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+  }
+  .section-header-text { flex: 1; }
+  .section-step-num {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--brand);
+    margin-bottom: 2px;
+  }
+  .section-header h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--gray-900);
+    margin: 0;
+  }
+  .section-toggle {
+    width: 32px; height: 32px;
+    background: var(--brand-light);
+    border: none;
+    border-radius: 8px;
+    color: var(--brand);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+  .section-toggle:hover { background: var(--brand); color: #fff; }
+  .section-body { padding: 28px 32px; }
+  .section-card.collapsed .section-body { display: none; }
+
+  /* ---- STEPS LIST ---- */
+  .steps-list { display: flex; flex-direction: column; gap: 14px; margin: 16px 0; }
+  .step-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--brand);
+    transition: box-shadow .2s;
+  }
+  .step-item:hover { box-shadow: var(--shadow-sm); }
+  .step-num-bubble {
+    width: 32px; height: 32px;
+    background: var(--brand);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .step-item-content { flex: 1; }
+  .step-item-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; color: var(--gray-900); }
+  .step-item-desc { font-size: 13px; color: var(--gray-600); line-height: 1.5; }
+  .step-item-desc code {
+    background: var(--brand-light);
+    color: var(--brand-dark);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ---- ALERTS ---- */
+  .alert {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    margin: 16px 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .alert-icon { font-size: 20px; flex-shrink: 0; margin-top: -1px; }
+  .alert-body { flex: 1; }
+  .alert-body strong { display: block; font-size: 14px; margin-bottom: 3px; }
+  .alert-success { background: var(--success-bg); border-left: 4px solid var(--success); color: #14532d; }
+  .alert-warning { background: var(--warning-bg); border-left: 4px solid var(--warning); color: #78350f; }
+  .alert-danger  { background: var(--danger-bg);  border-left: 4px solid var(--danger);  color: #7f1d1d; }
+  .alert-info    { background: var(--info-bg);    border-left: 4px solid var(--info);    color: #1e3a5f; }
+
+  /* ---- MOCKUP SCREENS ---- */
+  .mockup-screen {
+    background: #1e1e2e;
+    border-radius: var(--radius);
+    padding: 0;
+    margin: 20px 0;
+    overflow: hidden;
+    border: 2px solid var(--gray-200);
+  }
+  .mockup-titlebar {
+    background: #2d2d3d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #3d3d4d;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+  .mockup-url {
+    flex: 1;
+    background: #3d3d4d;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: #a0a0b0;
+    font-family: 'Courier New', monospace;
+    margin: 0 12px;
+  }
+  .mockup-content {
+    padding: 20px 24px;
+    background: #f8fafc;
+    color: var(--gray-700);
+    font-size: 13px;
+  }
+  .mockup-form-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .mockup-field {
+    flex: 1;
+    min-width: 160px;
+  }
+  .mockup-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .mockup-field input {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--gray-900);
+    pointer-events: none;
+  }
+  .mockup-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--brand);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: default;
+    margin-top: 8px;
+  }
+  .mockup-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning); }
+  .badge-danger  { background: var(--danger-bg);  color: var(--danger); }
+  .badge-info    { background: var(--info-bg);    color: var(--info); }
+  .badge-purple  { background: var(--brand-light); color: var(--brand); }
+
+  /* ---- STATUS FLOW ---- */
+  .status-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .status-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    padding: 14px 12px;
+    border-radius: var(--radius-sm);
+    min-width: 120px;
+    flex: 1;
+  }
+  .status-node-icon { font-size: 28px; }
+  .status-node-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+  .status-node-desc { font-size: 11px; color: var(--gray-600); line-height: 1.3; }
+  .status-arrow { font-size: 20px; color: var(--gray-400); padding: 0 4px; flex-shrink: 0; }
+  .sn-emise    { background: var(--brand-light); }
+  .sn-cours    { background: var(--info-bg); }
+  .sn-dispo    { background: var(--warning-bg); }
+  .sn-acceptee { background: var(--success-bg); }
+  .sn-rejetee  { background: var(--danger-bg); }
+
+  /* ---- TVA TABLE ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 16px 0;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  thead th {
+    background: var(--brand);
+    color: #fff;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+  }
+  tbody tr:nth-child(even) td { background: var(--gray-50); }
+  tbody tr:hover td { background: var(--brand-light); }
+
+  /* ---- VIDEO CARDS ---- */
+  .video-card {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: var(--gray-50);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 16px 0;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .video-card:hover { border-color: var(--brand); box-shadow: var(--shadow); }
+  .video-thumb {
+    width: 140px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-mid) 100%);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .video-thumb-inner {
+    text-align: center;
+    color: #fff;
+  }
+  .play-btn {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 6px;
+    border: 2px solid rgba(255,255,255,0.6);
+  }
+  .play-btn::after { content: '▶'; font-size: 13px; margin-left: 2px; }
+  .video-thumb-label { font-size: 11px; font-weight: 600; opacity: 0.85; }
+  .video-info { flex: 1; }
+  .video-title { font-weight: 700; font-size: 15px; color: var(--gray-900); margin-bottom: 4px; }
+  .video-meta { font-size: 12px; color: var(--brand); font-weight: 600; margin-bottom: 8px; }
+  .video-desc { font-size: 13px; color: var(--gray-600); line-height: 1.5; }
+
+  /* ---- FAQ ---- */
+  .faq-item {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .faq-question {
+    padding: 16px 20px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    transition: background .15s;
+    user-select: none;
+  }
+  .faq-question:hover { background: var(--brand-light); }
+  .faq-arrow { color: var(--brand); font-size: 16px; flex-shrink: 0; transition: transform .2s; }
+  .faq-item.open .faq-arrow { transform: rotate(180deg); }
+  .faq-answer {
+    padding: 0 20px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease, padding .3s;
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.6;
+    background: var(--gray-50);
+  }
+  .faq-item.open .faq-answer {
+    max-height: 400px;
+    padding: 14px 20px 16px;
+  }
+
+  /* ---- URGENCE ---- */
+  .urgence-card {
+    background: linear-gradient(135deg, #1e1b4b 0%, var(--brand-dark) 100%);
+    border-radius: var(--radius);
+    padding: 36px;
+    color: #fff;
+    margin: 28px 0;
+  }
+  .urgence-card h2 {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .urgence-card p { opacity: 0.85; font-size: 15px; margin-bottom: 24px; }
+  .urgence-options { display: flex; gap: 16px; flex-wrap: wrap; }
+  .urgence-option {
+    flex: 1;
+    min-width: 220px;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.20);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+  }
+  .urgence-option h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .urgence-option p { font-size: 13px; opacity: 0.8; margin-bottom: 12px; }
+  .urgence-btn {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    transition: background .2s;
+    cursor: pointer;
+  }
+  .urgence-btn:hover { background: rgba(255,255,255,0.35); }
+  .urgence-btn.primary {
+    background: #fff;
+    color: var(--brand-dark);
+    border-color: #fff;
+  }
+  .urgence-btn.primary:hover { background: var(--brand-light); color: var(--brand-dark); }
+
+  /* ---- CONTACT FORM ---- */
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.8);
+  }
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 8px;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .form-group input::placeholder,
+  .form-group textarea::placeholder { color: rgba(255,255,255,0.45); }
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
+    border-color: rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.16);
+  }
+  .form-group select option { background: var(--brand-dark); color: #fff; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+
+  /* ---- STICKY NAV ---- */
+  .sticky-nav {
+    position: sticky;
+    top: 0;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--gray-200);
+    z-index: 100;
+    padding: 10px 0;
+  }
+  .sticky-nav-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .nav-logo {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--brand);
+    flex-shrink: 0;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  .nav-link {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-decoration: none;
+    transition: all .15s;
+  }
+  .nav-link:hover, .nav-link.active { background: var(--brand-light); color: var(--brand); }
+  .nav-cta {
+    background: var(--brand);
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  /* ---- PRINT BUTTON ---- */
+  .print-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--brand);
+    color: #fff;
+    border: none;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(79,70,229,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .print-fab:hover { transform: scale(1.08); box-shadow: 0 8px 28px rgba(79,70,229,0.5); }
+
+  /* ---- CHECKLIST ---- */
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+  }
+  .check-box {
+    width: 20px; height: 20px;
+    border: 2px solid var(--gray-300, #d1d5db);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ---- SUBSECTION ---- */
+  .subsection { margin: 24px 0; }
+  .subsection h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--brand-dark);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 640px) {
+    .hero { padding: 36px 24px 32px; }
+    .section-header { padding: 18px 20px; }
+    .section-body { padding: 20px 20px; }
+    .progress-steps { gap: 4px; }
+    .step-label { font-size: 10px; max-width: 60px; }
+    .video-card { flex-direction: column; }
+    .video-thumb { width: 100%; height: 110px; }
+    .urgence-options { flex-direction: column; }
+    .form-row { flex-direction: column; }
+    .status-flow { flex-direction: column; }
+    .status-arrow { transform: rotate(90deg); }
+    .progress-step:not(:last-child)::after { display: none; }
+    table { font-size: 12px; }
+    thead th, tbody td { padding: 9px 10px; }
+  }
+
+  @media print {
+    .sticky-nav, .print-fab { display: none; }
+    .section-card.collapsed .section-body { display: block !important; }
+    body { background: #fff; font-size: 12px; }
+    .hero { background: var(--brand) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section-card { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sticky Navigation -->
+<nav class="sticky-nav">
+  <div class="sticky-nav-inner">
+    <div class="nav-logo">⚡ FacturEasy</div>
+    <div class="nav-links">
+      <a href="#etape1" class="nav-link">1. Compte PPF</a>
+      <a href="#etape2" class="nav-link">2. Connexion API</a>
+      <a href="#etape3" class="nav-link">3. 1ère facture</a>
+      <a href="#etape4" class="nav-link">4. Statuts</a>
+      <a href="#etape5" class="nav-link">5. TVA</a>
+      <a href="#faq" class="nav-link">FAQ</a>
+      <a href="#urgence" class="nav-link">Aide</a>
+    </div>
+    <a href="#urgence" class="nav-cta">🆘 Support</a>
+  </div>
+</nav>
+
+<!-- Print button -->
+<button class="print-fab no-print" onclick="window.print()" title="Imprimer / Enregistrer PDF">🖨️</button>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="page-wrapper">
+    <div class="hero-label">FacturEasy · Kit d'autonomie complet</div>
+    <h1>Maîtrisez Chorus Pro<br>en 5 étapes</h1>
+    <p>De la création de votre compte à la déclaration TVA — tout ce qu'il faut pour être 100% autonome sur la facturation électronique.</p>
+    <div class="hero-badges">
+      <span class="hero-badge">✅ Conforme réforme 2026</span>
+      <span class="hero-badge">📹 5 vidéos incluses</span>
+      <span class="hero-badge">❓ 10 FAQ essentielles</span>
+      <span class="hero-badge">🔧 Support premium disponible</span>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- Progress Bar -->
+  <div class="progress-section">
+    <h2>Votre parcours d'autonomie</h2>
+    <p>Suivez ces 5 étapes dans l'ordre. Cochez chaque étape au fur et à mesure — la plupart prennent moins de 20 minutes.</p>
+    <div class="progress-steps">
+      <div class="progress-step done" onclick="scrollToStep('etape1')">
+        <div class="step-circle">1</div>
+        <div class="step-label">Créer compte PPF</div>
+      </div>
+      <div class="progress-step" onclick="scrollToStep('etape2')">
+        <div class="step-circle">2</div>
+        <div class="step-label">Connecter FacturEasy</div>
+      </div>
+      <div class="progress-step" onclick="scrollToStep('etape3')">
+        <div class="step-circle">3</div>
+        <div class="step-label">1ère facture</div>
+      </div>
+      <div class="progress-step" onclick="scrollToStep('etape4')">
+        <div class="step-circle">4</div>
+        <div class="step-label">Suivi statuts</div>
+      </div>
+      <div class="progress-step" onclick="scrollToStep('etape5')">
+        <div class="step-circle">5</div>
+        <div class="step-label">Déclaration TVA</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉTAPE 1 -->
+  <div class="section-card" id="etape1">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon">🏛️</div>
+      <div class="section-header-text">
+        <div class="section-step-num">Étape 1 · 30 minutes</div>
+        <h2>Créer votre compte Portail Public de Facturation (Chorus Pro)</h2>
+      </div>
+      <button class="section-toggle">▾</button>
+    </div>
+    <div class="section-body">
+
+      <div class="alert alert-info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-body">
+          <strong>Vous avez peut-être déjà un compte</strong>
+          Si vous avez des clients publics (mairies, hôpitaux, collectivités), vérifiez d'abord sur <strong>chorus-pro.gouv.fr</strong> avec votre email professionnel avant de créer un nouveau compte.
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📋 Prérequis — préparez ces éléments avant de commencer</h3>
+        <ul class="checklist">
+          <li><div class="check-box"></div>Votre numéro SIRET (14 chiffres) — vérifiable sur <a href="https://annuaire-entreprises.data.gouv.fr" target="_blank" style="color:var(--brand)">annuaire-entreprises.data.gouv.fr</a></li>
+          <li><div class="check-box"></div>Un email professionnel valide (celui que vous utilisez pour votre activité)</li>
+          <li><div class="check-box"></div>Votre numéro de TVA intracommunautaire (format FR + 11 chiffres)</li>
+          <li><div class="check-box"></div>Vos coordonnées d'entreprise complètes (adresse, téléphone)</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <h3>🖥️ Aperçu de l'interface — page de création de compte</h3>
+        <div class="mockup-screen">
+          <div class="mockup-titlebar">
+            <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+            <div class="mockup-url">chorus-pro.gouv.fr/cpro/account/create</div>
+          </div>
+          <div class="mockup-content">
+            <div style="font-weight:700;font-size:18px;color:#1a1a2e;margin-bottom:4px;">Créer mon compte Chorus Pro</div>
+            <div style="font-size:12px;color:#666;margin-bottom:16px;">Portail Public de Facturation · Gratuit · AIFE</div>
+            <div class="mockup-form-row">
+              <div class="mockup-field"><label>SIRET *</label><input value="123 456 789 00012" readonly></div>
+              <div class="mockup-field"><label>Raison sociale *</label><input value="DUPONT CONSEIL SARL" readonly></div>
+            </div>
+            <div class="mockup-form-row">
+              <div class="mockup-field"><label>Email professionnel *</label><input value="contact@dupont-conseil.fr" readonly></div>
+              <div class="mockup-field"><label>Numéro de TVA *</label><input value="FR12345678900" readonly></div>
+            </div>
+            <div style="margin-top:4px;padding:8px;background:#ede9fe;border-radius:6px;font-size:12px;color:#4f46e5;">
+              🔐 Connexion sécurisée via <strong>ProConnect</strong> (ex-AgentConnect) — votre identité est vérifiée par l'État
+            </div>
+            <div class="mockup-btn">Créer mon compte →</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📝 Étapes de création — procédure complète</h3>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num-bubble">1</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Aller sur chorus-pro.gouv.fr</div>
+              <div class="step-item-desc">Cliquez sur "Créer un compte" en haut à droite. Vous serez redirigé vers ProConnect (l'identité numérique officielle de l'État).</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">2</div>
+            <div class="step-item-content">
+              <div class="step-item-title">S'authentifier via ProConnect</div>
+              <div class="step-item-desc">Utilisez votre email professionnel. Si vous n'avez pas encore de compte ProConnect, créez-en un en 5 minutes. Votre email est votre identifiant permanent.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">3</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Renseigner votre SIRET</div>
+              <div class="step-item-desc">Le système vérifie votre SIRET automatiquement et pré-remplit le nom de votre entreprise. Vérifiez que le nom affiché correspond bien à votre structure.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">4</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Compléter votre profil</div>
+              <div class="step-item-desc">Ajoutez votre numéro de TVA, vos coordonnées complètes, et désignez un administrateur (généralement vous). Renseignez également votre RIB si vous voulez recevoir des virements directs.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">5</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Confirmer par email</div>
+              <div class="step-item-desc">Vous recevez un email de confirmation dans les 24h. Cliquez sur le lien de validation. Votre compte est actif — vous pouvez maintenant émettre des factures.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>Attention : délai de validation</strong>
+          La validation complète du compte peut prendre jusqu'à 48h ouvrées pour les nouvelles entreprises. Ne démarrez cette étape que si vous avez le temps d'attendre avant d'émettre votre première facture.
+        </div>
+      </div>
+
+      <div class="alert alert-success">
+        <div class="alert-icon">✅</div>
+        <div class="alert-body">
+          <strong>Succès — Votre compte est actif quand :</strong>
+          Vous pouvez vous connecter sur chorus-pro.gouv.fr, voir votre tableau de bord "Espace Fournisseur" et votre SIRET apparaît dans le menu. Passez à l'étape 2.
+        </div>
+      </div>
+
+      <!-- Vidéo Étape 1 -->
+      <div class="video-card">
+        <div class="video-thumb">
+          <div class="video-thumb-inner">
+            <div class="play-btn"></div>
+            <div class="video-thumb-label">Étape 1 · 3 min</div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">📹 Vidéo — Créer votre compte Chorus Pro en 15 minutes</div>
+          <div class="video-meta">Durée : 3 min · Niveau débutant</div>
+          <div class="video-desc">Cette vidéo montre pas-à-pas la création d'un compte sur le Portail Public de Facturation : connexion ProConnect, saisie du SIRET, validation du profil entreprise. Vous verrez également comment vérifier que votre compte est bien activé.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ÉTAPE 2 -->
+  <div class="section-card" id="etape2">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon">🔗</div>
+      <div class="section-header-text">
+        <div class="section-step-num">Étape 2 · 20 minutes</div>
+        <h2>Connecter FacturEasy à Chorus Pro</h2>
+      </div>
+      <button class="section-toggle">▾</button>
+    </div>
+    <div class="section-body">
+
+      <div class="alert alert-info">
+        <div class="alert-icon">💡</div>
+        <div class="alert-body">
+          <strong>Ce que fait cette connexion</strong>
+          Une fois FacturEasy connecté à votre compte Chorus Pro, vos factures seront transmises automatiquement — plus besoin de vous connecter sur deux plateformes différentes.
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>🔑 Générer vos clés API dans Chorus Pro</h3>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num-bubble">1</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Accéder à la gestion des API</div>
+              <div class="step-item-desc">Dans Chorus Pro, allez dans <code>Mon compte</code> → <code>Paramètres techniques</code> → <code>Gestion des API</code>. Vous verrez la liste de vos applications connectées (vide au départ).</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">2</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Créer une nouvelle application</div>
+              <div class="step-item-desc">Cliquez "Nouvelle application" → Nom : <code>FacturEasy</code> → Type : <code>Logiciel de facturation</code> → Droits : cochez <code>Dépôt de factures</code> et <code>Consultation de statuts</code>.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">3</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Copier votre clé API</div>
+              <div class="step-item-desc">Chorus Pro génère une <code>Clé API</code> (longue chaîne alphanumérique) et un <code>Secret</code>. <strong>Copiez-les immédiatement</strong> — le secret n'est affiché qu'une seule fois.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup-screen">
+        <div class="mockup-titlebar">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <div class="mockup-url">app.factureasy.fr/settings/integrations/chorus-pro</div>
+        </div>
+        <div class="mockup-content">
+          <div style="font-weight:700;font-size:16px;color:#1a1a2e;margin-bottom:16px;">🔗 Connexion Chorus Pro</div>
+          <div class="mockup-form-row">
+            <div class="mockup-field"><label>SIRET de votre entreprise *</label><input value="123 456 789 00012" readonly></div>
+          </div>
+          <div class="mockup-form-row">
+            <div class="mockup-field"><label>Clé API Chorus Pro *</label><input value="cp_live_xxxxxxxxxxxxxxxxxxxxxxxx" readonly></div>
+          </div>
+          <div class="mockup-form-row">
+            <div class="mockup-field"><label>Secret API *</label><input value="••••••••••••••••••••••••" readonly></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:12px;align-items:center;">
+            <div class="mockup-btn">Tester la connexion</div>
+            <span class="mockup-badge badge-success">✅ Connexion vérifiée</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>⚙️ Finaliser la configuration dans FacturEasy</h3>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num-bubble">4</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Ouvrir FacturEasy → Paramètres → Intégrations</div>
+              <div class="step-item-desc">Dans le menu latéral, allez dans <code>Paramètres</code> → <code>Intégrations</code> → Cliquez sur la tuile "Chorus Pro / PPF".</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">5</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Coller votre SIRET et vos clés API</div>
+              <div class="step-item-desc">Collez le SIRET (sans espaces), la Clé API et le Secret copiés depuis Chorus Pro. Vérifiez qu'il n'y a pas d'espace parasite avant/après les clés.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">6</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Tester la connexion</div>
+              <div class="step-item-desc">Cliquez "Tester la connexion". FacturEasy envoie une requête de vérification à Chorus Pro. Si la connexion est réussie, vous verrez "✅ Connexion vérifiée" en vert.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>Erreur courante : "Clé API invalide"</strong>
+          Vérifiez que vous avez copié la clé en entier (60+ caractères). Les clés Chorus Pro commencent par <code>cp_live_</code> en production ou <code>cp_test_</code> en environnement de test. Assurez-vous d'utiliser la clé de production.
+        </div>
+      </div>
+
+      <div class="alert alert-success">
+        <div class="alert-icon">✅</div>
+        <div class="alert-body">
+          <strong>Succès — Connexion établie quand :</strong>
+          FacturEasy affiche "Connecté à Chorus Pro" avec votre SIRET et le nom de votre entreprise. Un indicateur vert est visible sur le tableau de bord. Passez à l'étape 3.
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-thumb">
+          <div class="video-thumb-inner">
+            <div class="play-btn"></div>
+            <div class="video-thumb-label">Étape 2 · 3 min</div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">📹 Vidéo — Connecter FacturEasy à Chorus Pro (clés API)</div>
+          <div class="video-meta">Durée : 3 min · Niveau intermédiaire</div>
+          <div class="video-desc">Démonstration complète de la génération des clés API sur Chorus Pro, de leur saisie dans FacturEasy, et du test de connexion. Inclut les erreurs courantes et leur résolution rapide.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ÉTAPE 3 -->
+  <div class="section-card" id="etape3">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon">📄</div>
+      <div class="section-header-text">
+        <div class="section-step-num">Étape 3 · 15 minutes</div>
+        <h2>Émettre votre première facture électronique</h2>
+      </div>
+      <button class="section-toggle">▾</button>
+    </div>
+    <div class="section-body">
+
+      <div class="subsection">
+        <h3>📋 Tutoriel pas-à-pas — de zéro à la facture envoyée</h3>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num-bubble">1</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Nouvelle facture → Choisir le destinataire</div>
+              <div class="step-item-desc">Dans FacturEasy, cliquez <code>+ Nouvelle facture</code>. Renseignez le <strong>SIRET complet à 14 chiffres</strong> du destinataire (pas le SIREN à 9 chiffres). FacturEasy vérifie automatiquement si le destinataire est inscrit sur le PPF.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">2</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Renseigner l'en-tête obligatoire</div>
+              <div class="step-item-desc">Numéro de facture (format libre, doit être unique et séquentiel), date d'émission, date d'échéance. Pour les marchés publics : numéro d'engagement fourni par votre client.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">3</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Ajouter les lignes de prestation</div>
+              <div class="step-item-desc">Pour chaque ligne : description, quantité, prix unitaire HT, taux de TVA (20%, 10%, 5.5% ou 0%). Vous pouvez avoir plusieurs taux de TVA sur la même facture. Le total TTC se calcule automatiquement.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">4</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Prévisualiser et vérifier</div>
+              <div class="step-item-desc">Cliquez "Prévisualiser". Vérifiez : tous les montants sont corrects, les deux SIRET sont affichés, le numéro de facture est unique. Si tout est bon, fermez l'aperçu.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">5</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Émettre la facture</div>
+              <div class="step-item-desc">Cliquez "Émettre vers Chorus Pro". FacturEasy génère le fichier Factur-X et le transmet automatiquement. Vous recevez un <strong>numéro de dépôt Chorus Pro</strong> — conservez-le, c'est votre preuve d'envoi.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-success">
+        <div class="alert-icon">✅</div>
+        <div class="alert-body">
+          <strong>Succès — Facture bien envoyée quand :</strong>
+          FacturEasy affiche un numéro de dépôt Chorus Pro (format : CP-XXXXXXXXXX). La facture passe au statut "EMISE" dans votre tableau de bord. Vous recevez également un email de confirmation.
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>Erreur courante 1 : "SIRET destinataire non trouvé"</strong>
+          Vérifiez le SIRET sur annuaire-entreprises.data.gouv.fr. Si le destinataire est un établissement public, utilisez le SIRET de l'établissement concerné (pas celui du siège). Certaines collectivités ont un SIRET par service.
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>Erreur courante 2 : "Numéro d'engagement manquant" (marchés publics uniquement)</strong>
+          Le numéro d'engagement est fourni par votre client public lors de la signature du bon de commande. Si vous ne l'avez pas, appelez votre interlocuteur — cette information est indispensable. Sans elle, la facture sera rejetée automatiquement.
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>Erreur courante 3 : "Numéro de facture déjà utilisé"</strong>
+          Chaque numéro de facture doit être unique. Si vous avez annulé une facture, ne réutilisez pas son numéro. Ajoutez une lettre (ex : FE-001 → FE-001B) ou créez un nouveau numéro séquentiel.
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-thumb">
+          <div class="video-thumb-inner">
+            <div class="play-btn"></div>
+            <div class="video-thumb-label">Étape 3 · 4 min</div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">📹 Vidéo — Créer et envoyer votre première facture électronique</div>
+          <div class="video-meta">Durée : 4 min · Démonstration en direct</div>
+          <div class="video-desc">Démonstration complète dans FacturEasy : saisie du destinataire, ajout des lignes de prestation avec TVA mixte, prévisualisation, et émission vers Chorus Pro. Vous verrez le numéro de dépôt apparaître en temps réel.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ÉTAPE 4 -->
+  <div class="section-card" id="etape4">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon">📊</div>
+      <div class="section-header-text">
+        <div class="section-step-num">Étape 4 · Suivi continu</div>
+        <h2>Suivre le statut de vos factures</h2>
+      </div>
+      <button class="section-toggle">▾</button>
+    </div>
+    <div class="section-body">
+
+      <div class="subsection">
+        <h3>🔄 Cycle de vie d'une facture — du dépôt au paiement</h3>
+        <div class="status-flow">
+          <div class="status-node sn-emise">
+            <div class="status-node-icon">📤</div>
+            <div class="status-node-label">EMISE</div>
+            <div class="status-node-desc">Déposée sur Chorus Pro, vérification en cours</div>
+          </div>
+          <div class="status-arrow">→</div>
+          <div class="status-node sn-cours">
+            <div class="status-node-icon">⚙️</div>
+            <div class="status-node-label">EN_COURS</div>
+            <div class="status-node-desc">Chorus Pro valide le format et les données</div>
+          </div>
+          <div class="status-arrow">→</div>
+          <div class="status-node sn-dispo">
+            <div class="status-node-icon">📬</div>
+            <div class="status-node-label">MISE À DISPO</div>
+            <div class="status-node-desc">Client l'a reçue, traitement en cours</div>
+          </div>
+          <div class="status-arrow">→</div>
+          <div class="status-node sn-acceptee">
+            <div class="status-node-icon">✅</div>
+            <div class="status-node-label">ACCEPTEE</div>
+            <div class="status-node-desc">Validée — paiement initié sous 30j</div>
+          </div>
+        </div>
+
+        <div class="alert alert-danger">
+          <div class="alert-icon">❌</div>
+          <div class="alert-body">
+            <strong>Statut REJETEE — que faire ?</strong>
+            1. Lisez le motif dans FacturEasy ou Chorus Pro (onglet "Détail du rejet").<br>
+            2. Corrigez uniquement le champ indiqué.<br>
+            3. Créez une nouvelle facture avec le même numéro + une lettre (ex : FE-001 → FE-001A).<br>
+            4. Émettez à nouveau. La correction prend en général moins de 5 minutes.
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📅 Délais de référence</h3>
+        <table>
+          <thead><tr><th>Statut</th><th>Durée typique</th><th>Action recommandée</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mockup-badge badge-purple">EMISE → EN_COURS</span></td><td>Quelques minutes</td><td>Aucune — attendre</td></tr>
+            <tr><td><span class="mockup-badge badge-info">EN_COURS → MISE À DISPO</span></td><td>1 à 24h</td><td>Aucune — attendre</td></tr>
+            <tr><td><span class="mockup-badge badge-warning">MISE À DISPO → ACCEPTEE</span></td><td>3 à 30 jours</td><td>Relancer après 30 jours ouvrés</td></tr>
+            <tr><td><span class="mockup-badge badge-success">ACCEPTEE → Virement</span></td><td>Délai légal 30 jours</td><td>Surveiller votre compte bancaire</td></tr>
+            <tr><td><span class="mockup-badge badge-danger">REJETEE</span></td><td>Instantané</td><td>Corriger et réémettre immédiatement</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="subsection">
+        <h3>✅ Checklist mensuelle de suivi</h3>
+        <ul class="checklist">
+          <li><div class="check-box"></div>Vérifier le statut de toutes les factures émises ce mois dans FacturEasy</li>
+          <li><div class="check-box"></div>Relancer les factures "MISE À DISPO" de plus de 30 jours (email ou appel au service comptabilité du client)</li>
+          <li><div class="check-box"></div>Corriger et réémettre toute facture "REJETEE" dans les 48h</li>
+          <li><div class="check-box"></div>Conserver le numéro de dépôt Chorus Pro pour chaque facture (preuve légale d'envoi)</li>
+          <li><div class="check-box"></div>Exporter votre journal des ventes mensuel depuis FacturEasy</li>
+        </ul>
+      </div>
+
+      <div class="video-card">
+        <div class="video-thumb">
+          <div class="video-thumb-inner">
+            <div class="play-btn"></div>
+            <div class="video-thumb-label">Étape 4 · 3 min</div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">📹 Vidéo — Comprendre les statuts Chorus Pro : EMISE, ACCEPTEE, REJETEE</div>
+          <div class="video-meta">Durée : 3 min · Essentiel</div>
+          <div class="video-desc">Explication claire du cycle de vie d'une facture sur Chorus Pro, avec des exemples concrets pour chaque statut. La vidéo montre aussi comment réagir à un rejet en moins de 5 minutes, sans paniquer.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ÉTAPE 5 -->
+  <div class="section-card" id="etape5">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon">🧾</div>
+      <div class="section-header-text">
+        <div class="section-step-num">Étape 5 · Mensuel / Trimestriel</div>
+        <h2>Déclarer votre TVA avec FacturEasy</h2>
+      </div>
+      <button class="section-toggle">▾</button>
+    </div>
+    <div class="section-body">
+
+      <div class="alert alert-info">
+        <div class="alert-icon">💡</div>
+        <div class="alert-body">
+          <strong>FacturEasy calcule votre TVA automatiquement</strong>
+          FacturEasy agrège toutes vos factures émises et reçues pour calculer votre TVA collectée et déductible. Votre seule action : vérifier les chiffres et les saisir dans votre espace DGFIP.
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📊 Tableau de bord TVA — ce que vous voyez dans FacturEasy</h3>
+        <div class="mockup-screen">
+          <div class="mockup-titlebar">
+            <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+            <div class="mockup-url">app.factureasy.fr/tva/dashboard</div>
+          </div>
+          <div class="mockup-content">
+            <div style="font-weight:700;font-size:16px;color:#1a1a2e;margin-bottom:16px;">📊 Tableau de bord TVA — Période : Avril 2026</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;margin-bottom:4px;">TVA collectée</div>
+                <div style="font-size:22px;font-weight:800;color:#16a34a;">4 280 €</div>
+                <div style="font-size:11px;color:#166534;">Sur 21 400 € HT facturés</div>
+              </div>
+              <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:4px;">TVA déductible</div>
+                <div style="font-size:22px;font-weight:800;color:#d97706;">1 120 €</div>
+                <div style="font-size:11px;color:#92400e;">Sur 5 600 € HT d'achats</div>
+              </div>
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;color:#1e3a5f;font-weight:700;text-transform:uppercase;margin-bottom:4px;">TVA nette à payer</div>
+                <div style="font-size:22px;font-weight:800;color:#2563eb;">3 160 €</div>
+                <div style="font-size:11px;color:#1e3a5f;">À déclarer avant le 15/05</div>
+              </div>
+            </div>
+            <div class="mockup-btn">📥 Exporter CA3 pré-rempli</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📝 Processus de déclaration — 3 étapes simples</h3>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num-bubble">1</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Vérifier le récapitulatif TVA dans FacturEasy</div>
+              <div class="step-item-desc">Allez dans <code>TVA</code> → <code>Tableau de bord</code>. Vérifiez que toutes vos factures sont bien comptabilisées. En cas de doute, comparez avec votre relevé bancaire.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">2</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Exporter le formulaire CA3 pré-rempli</div>
+              <div class="step-item-desc">Cliquez "Exporter CA3". FacturEasy génère un récapitulatif avec les montants exacts à reporter sur votre déclaration DGFIP. Les cases sont identifiées (CA3 case A, B, 08, 20...). Conservez ce PDF.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-bubble">3</div>
+            <div class="step-item-content">
+              <div class="step-item-title">Déclarer sur impots.gouv.fr</div>
+              <div class="step-item-desc">Connectez-vous sur <a href="https://www.impots.gouv.fr" target="_blank" style="color:var(--brand)">impots.gouv.fr</a> → Espace Professionnel → Déclarer TVA. Reportez les montants du CA3 FacturEasy case par case. Validez avant la date limite.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📅 Dates limites de déclaration TVA 2026</h3>
+        <table>
+          <thead><tr><th>Régime</th><th>Périodicité</th><th>Date limite typique</th></tr></thead>
+          <tbody>
+            <tr><td>Régime réel normal (CA > 789 000 €)</td><td>Mensuelle</td><td>Entre le 15 et le 24 du mois suivant</td></tr>
+            <tr><td>Régime réel simplifié (CA 36 800–789 000 €)</td><td>Annuelle + 2 acomptes</td><td>Acomptes en juillet et décembre</td></tr>
+            <tr><td>Option mensuelle (régime simplifié)</td><td>Mensuelle</td><td>Entre le 15 et le 24 du mois suivant</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>TVA non payée = pénalités de 10%</strong>
+          En cas de retard de déclaration ou de paiement, la DGFIP applique une majoration de 10% du montant dû. FacturEasy vous envoie un rappel 7 jours avant la date limite.
+        </div>
+      </div>
+
+      <div class="alert alert-success">
+        <div class="alert-icon">✅</div>
+        <div class="alert-body">
+          <strong>Félicitations — Vous êtes 100% autonome !</strong>
+          Vous maîtrisez maintenant toutes les étapes de la facturation électronique conforme. En cas de question, consultez la FAQ ci-dessous ou contactez le support premium.
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-thumb">
+          <div class="video-thumb-inner">
+            <div class="play-btn"></div>
+            <div class="video-thumb-label">Étape 5 · 3 min</div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">📹 Vidéo — Votre tableau de bord TVA : déclaration en 3 clics</div>
+          <div class="video-meta">Durée : 3 min · Mensuel / Trimestriel</div>
+          <div class="video-desc">Comment utiliser le tableau de bord TVA de FacturEasy pour vérifier vos montants, exporter votre CA3 pré-rempli et déclarer en moins de 10 minutes sur impots.gouv.fr. Inclut les erreurs de saisie les plus fréquentes.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section-card" id="faq">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon">❓</div>
+      <div class="section-header-text">
+        <div class="section-step-num">Référence</div>
+        <h2>FAQ — 10 questions fréquentes</h2>
+      </div>
+      <button class="section-toggle">▾</button>
+    </div>
+    <div class="section-body">
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Qu'est-ce que le PPF / Chorus Pro exactement ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          Le PPF (Portail Public de Facturation), accessible via chorus-pro.gouv.fr, est la plateforme gratuite de l'État qui centralise toutes les factures électroniques B2B françaises à partir de septembre 2026. Il est géré par l'AIFE (Agence pour l'Informatique Financière de l'État). C'est votre intermédiaire obligatoire pour émettre des factures à des clients publics, et le canal légal pour les factures B2B privées dès la réforme.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Dois-je obligatoirement passer par une PDP privée payante ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          Non. Le PPF (Chorus Pro) est gratuit et suffit pour être conforme à la réforme. Les PDP privées (Pennylane, Docaposte, Generix...) offrent des services supplémentaires comme l'archivage longue durée ou l'intégration comptable avancée, mais ne sont pas obligatoires pour la grande majorité des PME. FacturEasy se connecte directement au PPF.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Qu'est-ce qu'un numéro d'engagement et où le trouver ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          Pour les marchés publics, chaque bon de commande est associé à un numéro d'engagement dans le système comptable de l'administration. Ce numéro doit figurer sur votre facture, sinon elle est rejetée automatiquement. Demandez-le à votre interlocuteur public (service commandes ou comptabilité) dès la signature du bon de commande — ne l'oubliez pas à ce moment-là.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Ma facture a été rejetée — quelle est la procédure exacte ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          1. Consultez le motif du rejet dans FacturEasy (Dashboard → Facture concernée → "Détail du rejet").<br>
+          2. Identifiez le champ problématique (SIRET, numéro d'engagement, format de montant...).<br>
+          3. Créez une nouvelle facture avec le même contenu et le numéro corrigé (ex : FE-001 → FE-001A).<br>
+          4. Ne tentez pas de "modifier" la facture rejetée — elle est définitivement close dans Chorus Pro.<br>
+          5. Émettez la nouvelle facture. Durée moyenne de correction : 5 minutes.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Quelle est la différence entre SIRET (14 chiffres) et SIREN (9 chiffres) ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          Le SIREN est le numéro d'identification de l'entreprise (9 chiffres). Le SIRET est le numéro de l'établissement spécifique (14 chiffres = SIREN + NIC sur 5 chiffres). Chorus Pro exige le SIRET complet du destinataire. Pour les clients publics qui ont plusieurs établissements (ex : une ville avec plusieurs services), vérifiez que vous utilisez le bon SIRET d'établissement sur annuaire-entreprises.data.gouv.fr.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Puis-je encore envoyer des factures PDF par email après septembre 2026 ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          Non, pour les factures B2B à partir de septembre 2026. Le PDF simple par email ne sera plus accepté comme facture légalement valide entre professionnels assujettis à la TVA. La facture doit obligatoirement transiter par le PPF ou une PDP agréée. Vos clients professionnels auront le droit de refuser les PDFs, et vous vous exposez à une amende de 15€ par facture non conforme.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Que signifie le statut "Mise à disposition" et dois-je m'inquiéter ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          "Mise à disposition" signifie que votre facture a bien été reçue par votre client mais qu'il ne l'a pas encore traitée (acceptée ou rejetée). C'est un statut normal — ne relancez pas avant la fin du délai légal de traitement (30 jours pour les entreprises privées, 30 jours pour les administrations). Une relance prématurée n'accélère pas le processus.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Comment émettre une facture d'avoir (note de crédit) ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          Dans FacturEasy, créez une nouvelle facture et sélectionnez le type "Avoir" ou "Note de crédit". L'avoir doit référencer le numéro de la facture originale dans le champ prévu. Saisissez les montants en positif (FacturEasy gère l'inversion automatiquement). L'avoir est transmis à Chorus Pro comme n'importe quelle facture.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Combien de temps dois-je conserver mes factures électroniques ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          10 ans, conformément à l'article L.123-22 du Code de commerce. Une facture électronique conforme (Factur-X, UBL, ou émise via Chorus Pro) a la même valeur légale qu'une facture papier. FacturEasy archive automatiquement toutes vos factures sur ses serveurs sécurisés. Vous pouvez également exporter et stocker vos factures localement ou sur votre comptable.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          FacturEasy a-t-il accès à mes données de facturation ?
+          <span class="faq-arrow">▾</span>
+        </div>
+        <div class="faq-answer">
+          FacturEasy traite vos factures pour les transmettre à Chorus Pro — c'est le fonctionnement technique du service. Vos données sont hébergées sur des serveurs sécurisés en France (conformité RGPD). FacturEasy ne partage pas vos données avec des tiers. Vos identifiants Chorus Pro (clés API) sont chiffrés et ne sont jamais accessibles par l'équipe FacturEasy. Consultez notre politique de confidentialité sur factureasy.fr/confidentialite.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- URGENCE / SUPPORT -->
+  <div id="urgence">
+    <div class="urgence-card">
+      <h2>🆘 Besoin d'aide ?</h2>
+      <p>Le kit d'autonomie couvre 95% des situations. Pour le reste, voici vos options.</p>
+      <div class="urgence-options">
+
+        <div class="urgence-option">
+          <h3>📖 Base de connaissances</h3>
+          <p>Guides détaillés, tutoriels vidéo et réponses aux questions avancées — disponibles 24h/24.</p>
+          <a href="https://help.factureasy.fr" target="_blank" class="urgence-btn">Consulter la base →</a>
+        </div>
+
+        <div class="urgence-option">
+          <h3>🤝 Support premium</h3>
+          <p>Un expert FacturEasy vous accompagne en visioconférence. Résolution garantie en 1 session.</p>
+          <a href="mailto:support-premium@factureasy.fr" class="urgence-btn primary">Réserver une session →</a>
+        </div>
+
+        <div class="urgence-option">
+          <h3>📞 Hotline Chorus Pro (gratuit)</h3>
+          <p>L'AIFE répond aux questions techniques Chorus Pro du lun-ven 9h-12h / 14h-17h.</p>
+          <span class="urgence-btn">0809 400 110</span>
+        </div>
+
+      </div>
+
+      <!-- Formulaire de contact -->
+      <div style="margin-top:28px;">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;">📩 Envoyer une demande de support</h3>
+        <form class="contact-form" onsubmit="submitSupport(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="nom">Votre nom</label>
+              <input type="text" id="nom" placeholder="Marie Dupont">
+            </div>
+            <div class="form-group">
+              <label for="email">Email de contact</label>
+              <input type="email" id="email" placeholder="marie@votre-entreprise.fr">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="sujet">Type de problème</label>
+            <select id="sujet">
+              <option value="">— Sélectionnez —</option>
+              <option>Problème de connexion Chorus Pro</option>
+              <option>Facture rejetée — motif incompris</option>
+              <option>Erreur lors de l'émission</option>
+              <option>Problème de statut / suivi</option>
+              <option>Question sur la TVA</option>
+              <option>Autre question technique</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="message">Description du problème</label>
+            <textarea id="message" rows="4" placeholder="Décrivez votre situation en détail : numéro de facture concerné, message d'erreur affiché, étape à laquelle vous êtes bloqué..."></textarea>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <button type="submit" class="urgence-btn primary" style="border:none;cursor:pointer;font-size:14px;padding:11px 24px;">
+              Envoyer la demande →
+            </button>
+            <span style="font-size:12px;opacity:0.7;">Réponse sous 24h ouvrées · Support standard inclus</span>
+          </div>
+        </form>
+        <div id="form-success" style="display:none;margin-top:16px;padding:14px;background:rgba(255,255,255,0.15);border-radius:8px;font-size:14px;">
+          ✅ Demande envoyée ! Vous recevrez une réponse à l'email indiqué sous 24h ouvrées.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:32px 0 16px;color:var(--gray-400);font-size:13px;">
+    <strong style="color:var(--brand);">⚡ FacturEasy</strong> · Kit d'autonomie Chorus Pro · Version 2026<br>
+    <span>Questions : <a href="mailto:support@factureasy.fr" style="color:var(--brand);">support@factureasy.fr</a> · <a href="https://factureasy.fr" target="_blank" style="color:var(--brand);">factureasy.fr</a></span>
+  </div>
+
+</div>
+
+<script>
+  // Toggle section collapse
+  function toggleSection(header) {
+    const card = header.closest('.section-card');
+    const btn = header.querySelector('.section-toggle');
+    card.classList.toggle('collapsed');
+    btn.textContent = card.classList.contains('collapsed') ? '▸' : '▾';
+  }
+
+  // Toggle FAQ accordion
+  function toggleFaq(question) {
+    const item = question.closest('.faq-item');
+    const wasOpen = item.classList.contains('open');
+    // Close all
+    document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+  }
+
+  // Scroll to step
+  function scrollToStep(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Progress bar interaction
+  document.querySelectorAll('.progress-step').forEach((step, i) => {
+    step.addEventListener('click', function() {
+      document.querySelectorAll('.progress-step').forEach((s, j) => {
+        s.classList.toggle('done', j < i);
+        s.classList.toggle('active', j === i);
+      });
+    });
+  });
+
+  // Highlight nav link on scroll
+  const sections = ['etape1','etape2','etape3','etape4','etape5','faq','urgence'];
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        document.querySelectorAll('.nav-link').forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+
+  // Form submission simulation
+  function submitSupport(e) {
+    e.preventDefault();
+    const nom = document.getElementById('nom').value;
+    const email = document.getElementById('email').value;
+    const sujet = document.getElementById('sujet').value;
+    const msg = document.getElementById('message').value;
+    if (!email || !sujet || !msg) {
+      alert('Veuillez renseigner votre email, le type de problème et votre message.');
+      return;
+    }
+    document.getElementById('form-success').style.display = 'block';
+    e.target.style.opacity = '0.5';
+    e.target.style.pointerEvents = 'none';
+  }
+</script>
+
+</body>
+</html>

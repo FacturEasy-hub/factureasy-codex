@@ -1,0 +1,119 @@
+# FacturEasy — CI/CD Pipeline
+# Issue #99
+#
+# 3 jobs : test → build → deploy-backend
+# Le deploy frontend est géré automatiquement par Vercel via l'intégration GitHub
+# (chaque push déclenche un preview, chaque push sur main déclenche un deploy production)
+#
+# Pour bloquer les merges PR si les tests échouent :
+# → GitHub Settings > Branches > Branch protection rules > main
+# → Cocher "Require status checks to pass before merging"
+# → Ajouter les status checks : "test-backend" et "build-frontend"
+
+name: CI/CD FacturEasy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Job 1 : Tests backend ────────────────────────────────────────────────────
+  test-backend:
+    name: Tests Backend (Jest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: factureasy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/factureasy_test
+          JWT_SECRET: ci-test-secret-not-for-prod
+          NODE_ENV: test
+
+  # ─── Job 2 : Build frontend ───────────────────────────────────────────────────
+  build-frontend:
+    name: Build Frontend (Vite + React)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build React app
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  # ─── Job 3 : Deploy backend → Render ──────────────────────────────────────────
+  # Déclenché uniquement sur push main (pas sur PR)
+  deploy-backend:
+    name: Deploy Backend → Render
+    runs-on: ubuntu-latest
+    needs: [test-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          curl --silent --show-error --fail \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        # RENDER_DEPLOY_HOOK_URL : GitHub Settings > Secrets > Actions
+        # Obtenir l'URL dans : Render Dashboard > Service factureasy-api > Settings > Deploy Hook
+
+  # ─── Deploy frontend : géré automatiquement par Vercel ───────────────────────
+  # Aucune action GitHub Actions nécessaire.
+  # Vercel détecte chaque push sur GitHub via son intégration native :
+  #   - push sur une branche de PR → déploiement Preview automatique
+  #   - push sur main → déploiement Production automatique
+  # Configuration dans : https://vercel.com/dashboard > Project > Settings > Git

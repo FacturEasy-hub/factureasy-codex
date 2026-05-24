@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FacturEasy — Hors ligne</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;
+     min-height:100vh;background:#f8fafc;color:#1e293b;text-align:center;padding:24px}
+.card{background:#fff;border-radius:16px;padding:48px 32px;max-width:380px;
+      box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.icon{font-size:56px;margin-bottom:20px}
+h1{font-size:22px;font-weight:800;margin-bottom:12px}
+p{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px}
+button{background:#7c3aed;color:#fff;border:none;padding:12px 28px;
+       border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">📶</div>
+  <h1>Vous êtes hors ligne</h1>
+  <p>FacturEasy a besoin d'internet pour synchroniser avec Chorus Pro. Vos dernières données consultées restent disponibles.</p>
+  <button onclick="location.reload()">Réessayer</button>
+</div>
+</body>
+</html>

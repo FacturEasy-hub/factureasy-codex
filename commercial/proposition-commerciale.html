@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Proposition commerciale — FacturEasy</title>
+<style>
+  @media print { .no-print { display:none; } @page { margin: 1.5cm; } }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; background: #fff; line-height: 1.6; font-size: 14px; }
+  .page { max-width: 800px; margin: 0 auto; padding: 40px 48px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #185FA5; }
+  .logo { font-size: 26px; font-weight: 800; color: #185FA5; }
+  .logo span { color: #1a1a1a; font-weight: 400; }
+  .doc-meta { text-align: right; font-size: 13px; color: #6B7280; }
+  .doc-meta strong { display: block; font-size: 15px; color: #1a1a1a; margin-bottom: 4px; }
+  .adressage { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 36px; }
+  .bloc-adresse h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9CA3AF; margin-bottom: 8px; }
+  .bloc-adresse p { font-size: 14px; line-height: 1.8; }
+  .titre-section { background: #185FA5; color: #fff; padding: 20px 28px; border-radius: 8px; margin-bottom: 28px; }
+  .titre-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .titre-section p { font-size: 13px; opacity: 0.85; }
+  h2 { font-size: 17px; font-weight: 700; color: #185FA5; margin: 28px 0 12px; border-left: 4px solid #185FA5; padding-left: 12px; }
+  p { margin-bottom: 10px; }
+  .contexte { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px; }
+  .contexte p { margin: 0; font-size: 14px; color: #1E40AF; }
+  /* Plans grid */
+  .plans-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin: 16px 0 24px; }
+  .plan-card { border: 1px solid #E5E7EB; border-radius: 10px; padding: 16px; }
+  .plan-card.recommended { border: 2px solid #185FA5; background: #EFF6FF; }
+  .plan-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #185FA5; letter-spacing: .05em; margin-bottom: 6px; }
+  .plan-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .plan-price { font-size: 22px; font-weight: 900; color: #185FA5; margin-bottom: 8px; }
+  .plan-price span { font-size: 12px; font-weight: 400; color: #6B7280; }
+  .plan-feat { font-size: 12px; color: #374151; line-height: 1.7; }
+  .plan-feat li { list-style: none; padding-left: 16px; position: relative; }
+  .plan-feat li::before { content: "✓"; position: absolute; left: 0; color: #185FA5; font-weight: 700; }
+  /* Prix table */
+  .prix-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .prix-table th { background: #F9FAFB; padding: 10px 14px; text-align: left; font-size: 12px; color: #6B7280; border-bottom: 2px solid #E5E7EB; }
+  .prix-table td { padding: 10px 14px; border-bottom: 1px solid #F3F4F6; font-size: 14px; }
+  .prix-table .total-row td { font-weight: 700; font-size: 15px; background: #EFF6FF; color: #185FA5; border-top: 2px solid #185FA5; border-bottom: none; }
+  .prix-table td:last-child { text-align: right; font-weight: 600; }
+  .badge-incl { background: #EAF3DE; color: #3B6D11; font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+  /* Timeline */
+  .timeline { display: flex; gap: 0; margin: 16px 0; }
+  .tl-step { flex: 1; text-align: center; }
+  .tl-dot { width: 32px; height: 32px; background: #185FA5; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin: 0 auto 8px; }
+  .tl-line { height: 2px; background: #E5E7EB; flex: 1; margin-top: 16px; }
+  .tl-label { font-size: 12px; font-weight: 600; }
+  .tl-sub { font-size: 11px; color: #9CA3AF; }
+  /* Garanties */
+  .garanties { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .garantie { padding: 14px 16px; border: 1px solid #E5E7EB; border-radius: 8px; }
+  .garantie-icon { font-size: 20px; margin-bottom: 6px; }
+  .garantie-title { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+  .garantie-desc { font-size: 12px; color: #6B7280; }
+  /* CTA */
+  .cta-box { background: #185FA5; color: #fff; padding: 28px; border-radius: 10px; margin: 32px 0 24px; text-align: center; }
+  .cta-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #fff; }
+  .cta-box p { font-size: 14px; opacity: 0.9; margin-bottom: 16px; }
+  .cta-btn { display: inline-block; background: #fff; color: #185FA5; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 15px; text-decoration: none; }
+  footer { border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 32px; font-size: 12px; color: #9CA3AF; display: flex; justify-content: space-between; }
+  .print-btn { position: fixed; bottom: 24px; right: 24px; background: #185FA5; color: #fff; border: none; padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">Enregistrer en PDF</button>
+
+<div class="page">
+
+  <div class="header">
+    <div>
+      <div class="logo">Factur<span>Easy</span></div>
+      <div style="font-size:13px;color:#6B7280;margin-top:4px">Facturation electronique Chorus Pro — Self-service</div>
+    </div>
+    <div class="doc-meta">
+      <strong>PROPOSITION COMMERCIALE</strong>
+      N° : PC-2026-<span id="num">001</span><br>
+      Date : <span id="date"></span><br>
+      Validite : 30 jours
+    </div>
+  </div>
+
+  <div class="adressage">
+    <div class="bloc-adresse">
+      <h3>Propose par</h3>
+      <p><strong>FacturEasy</strong><br>
+      [Adresse]<br>
+      SIRET : [a completer]<br>
+      contact@factureasy.fr</p>
+    </div>
+    <div class="bloc-adresse">
+      <h3>Propose a</h3>
+      <p><strong>[Nom entreprise]</strong><br>
+      [Adresse]<br>
+      SIRET : [a completer]<br>
+      [email]<br>
+      A l'attention de : [Prenom Nom]</p>
+    </div>
+  </div>
+
+  <div class="titre-section">
+    <h2>Mise en conformite Facturation Electronique PPF — 100% self-service</h2>
+    <p>Abonnement SaaS + Kit Autonomie optionnel | Operationnel en moins d'1 heure | Sans consultant, sans rendez-vous</p>
+  </div>
+
+  <div class="contexte">
+    <p>A partir du <strong>1er septembre 2026</strong>, toutes les entreprises francaises assujetties a la TVA devront emettre leurs factures via le Portail Public de Facturation (Chorus Pro / PPF). FacturEasy connecte directement votre activite a l'API Chorus Pro — sans XML, sans formation technique, sans intermediaire.</p>
+  </div>
+
+  <h2>Choisissez votre plan</h2>
+  <div class="plans-grid">
+    <div class="plan-card">
+      <div class="plan-badge">Independant</div>
+      <div class="plan-name">Solo</div>
+      <div class="plan-price">14 &euro;<span> /mois HT</span></div>
+      <ul class="plan-feat">
+        <li>1 utilisateur</li>
+        <li>30 factures Chorus Pro/mois</li>
+        <li>Dashboard tresorerie</li>
+        <li>MAJ reglementaires incluses</li>
+      </ul>
+    </div>
+    <div class="plan-card recommended">
+      <div class="plan-badge">Le plus choisi</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">34 &euro;<span> /mois HT</span></div>
+      <ul class="plan-feat">
+        <li>1 utilisateur</li>
+        <li>Chorus Pro illimite</li>
+        <li>Devis + relances auto</li>
+        <li>Recap TVA mensuel</li>
+      </ul>
+    </div>
+    <div class="plan-card">
+      <div class="plan-badge">TPE / Cabinet</div>
+      <div class="plan-name">Equipe</div>
+      <div class="plan-price">69 &euro;<span> /mois HT</span></div>
+      <ul class="plan-feat">
+        <li>Jusqu'a 5 utilisateurs</li>
+        <li>Export FEC expert-comptable</li>
+        <li>Export CA3 TVA</li>
+        <li>Acces lecture expert-comptable</li>
+      </ul>
+    </div>
+    <div class="plan-card">
+      <div class="plan-badge">PME</div>
+      <div class="plan-name">Business</div>
+      <div class="plan-price">149 &euro;<span> /mois HT</span></div>
+      <ul class="plan-feat">
+        <li>Utilisateurs illimites</li>
+        <li>API complete</li>
+        <li>SLA 99,9% garanti</li>
+        <li>Support prioritaire dedie</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Options complementaires : Kit Autonomie (99€) ou Pack Onboarding PPF (149€)</h2>
+  <table class="prix-table">
+    <thead><tr><th>Contenu</th><th>Detail</th><th style="text-align:right">Montant HT</th></tr></thead>
+    <tbody>
+      <tr><td>Videoapplied complete (acces a vie)</td><td>12 modules — 3h de contenu</td><td><span class="badge-incl">inclus</span></td></tr>
+      <tr><td>Guide PDF Chorus Pro</td><td>48 pages — etape par etape</td><td><span class="badge-incl">inclus</span></td></tr>
+      <tr><td>Checklist conformite PPF</td><td>22 points valides par des experts</td><td><span class="badge-incl">inclus</span></td></tr>
+      <tr><td>Support email prioritaire</td><td>30 jours — reponse garantie 24h ouvrees</td><td><span class="badge-incl">inclus</span></td></tr>
+      <tr><td colspan="2" style="font-size:12px;color:#6B7280;font-style:italic">--- OU ---</td><td></td></tr>
+      <tr><td>Pack Onboarding PPF</td><td>Kit Autonomie + session visio de mise en route (1h)</td><td style="text-align:right;font-weight:600">149 &euro; HT</td></tr>
+      <tr class="total-row"><td colspan="2">KIT AUTONOMIE seul — paiement unique, deductible fiscalement</td><td>99 &euro; HT</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Mise en route estimee</h2>
+  <div class="timeline">
+    <div class="tl-step">
+      <div class="tl-dot">J0</div>
+      <div class="tl-label">Inscription</div>
+      <div class="tl-sub">5 min</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-step">
+      <div class="tl-dot">J0</div>
+      <div class="tl-label">Onboarding</div>
+      <div class="tl-sub">Video guidee</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-step">
+      <div class="tl-dot">J0</div>
+      <div class="tl-label">1ere facture</div>
+      <div class="tl-sub">En moins d'1h</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-step">
+      <div class="tl-dot">OK</div>
+      <div class="tl-label">Conforme PPF</div>
+      <div class="tl-sub">Immediatement</div>
+    </div>
+  </div>
+
+  <h2>Nos garanties</h2>
+  <div class="garanties">
+    <div class="garantie">
+      <div class="garantie-icon">&#x1F6E1;</div>
+      <div class="garantie-title">Essai 14 jours gratuit</div>
+      <div class="garantie-desc">Aucune carte bancaire. Acces complet. Annulation libre.</div>
+    </div>
+    <div class="garantie">
+      <div class="garantie-icon">&#x26A1;</div>
+      <div class="garantie-title">Operationnel en 1 heure</div>
+      <div class="garantie-desc">De la creation du compte a la premiere facture acceptee sur Chorus Pro.</div>
+    </div>
+    <div class="garantie">
+      <div class="garantie-icon">&#x1F4CB;</div>
+      <div class="garantie-title">Conformite reglementaire</div>
+      <div class="garantie-desc">API officielle Chorus Pro — mises a jour automatiques incluses pour toute la duree de l'abonnement.</div>
+    </div>
+    <div class="garantie">
+      <div class="garantie-icon">&#x1F4C8;</div>
+      <div class="garantie-title">Sans engagement</div>
+      <div class="garantie-desc">Resiliation mensuelle. -17% en annuel. Donnees exportables a tout moment.</div>
+    </div>
+  </div>
+
+  <div class="cta-box">
+    <h3>Demarrer gratuitement — aucune carte requise</h3>
+    <p>14 jours d'essai complet. Choisissez votre plan au terme de l'essai.<br>
+    Ou contactez-nous pour un devis sur mesure (plan Equipe ou Business).</p>
+    <a class="cta-btn" href="https://app.factureasy.fr/register">Essayer gratuitement</a>
+  </div>
+
+  <footer>
+    <span>FacturEasy · contact@factureasy.fr · factureasy.fr</span>
+    <span>Proposition valable jusqu'au <span id="validite"></span></span>
+  </footer>
+</div>
+
+<script>
+const today = new Date();
+document.getElementById('date').textContent = today.toLocaleDateString('fr-FR');
+const val = new Date(today); val.setDate(val.getDate()+30);
+document.getElementById('validite').textContent = val.toLocaleDateString('fr-FR');
+document.getElementById('num').textContent = String(Math.floor(Math.random()*900)+100);
+</script>
+</body>
+</html>
