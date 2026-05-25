@@ -582,10 +582,12 @@ const NAV_ITEMS = [
   { key: 'recurrentes', label: 'Récurrentes', icon: '🔁' },
   { key: 'revenus', label: 'Revenus', icon: '💰' },
   { key: 'depenses', label: 'Dépenses', icon: '💸' },
+  { key: 'tresorerie', label: 'Trésorerie', icon: '📈' },
   { key: 'tva',        label: 'TVA',                icon: '📋' },
   { key: 'devis',      label: 'Devis',              icon: '📝' },
   { key: 'catalogue',  label: 'Catalogue',          icon: '🗂️' },
   { key: 'plans', label: 'Plans & abonnement', icon: '⭐' },
+  { key: 'comptable', label: 'Comptable', icon: '👤' },
   { key: 'parametres', label: 'Paramètres', icon: '⚙️' },
 ];
 
@@ -717,10 +719,12 @@ const PAGE_META = {
   },
   revenus: { title: 'Revenus', subtitle: 'Suivi de vos encaissements', cta: '+ Revenu manuel' },
   depenses: { title: 'Dépenses', subtitle: 'Gestion de vos charges', cta: '+ Nouvelle dépense' },
+  tresorerie: { title: 'Trésorerie', subtitle: 'Projection simple 30 / 60 / 90 jours', cta: null },
   tva: { title: 'TVA', subtitle: 'Déclarations et suivi de la TVA', cta: null },
   devis: { title: 'Devis', subtitle: 'Propositions commerciales et conversion en facture', cta: '+ Nouveau devis' },
   catalogue: { title: 'Catalogue', subtitle: 'Articles et services réutilisables', cta: '+ Nouvel article' },
   plans: { title: 'Plans & abonnement', subtitle: 'Gérez votre abonnement FacturEasy', cta: null },
+  comptable: { title: 'Expert-comptable', subtitle: 'Accès lecture seule pour votre cabinet', cta: null },
   parametres: { title: 'Paramètres', subtitle: 'Configuration de votre compte', cta: null },
 };
 
@@ -2903,10 +2907,35 @@ function InviteComptable({ company }) {
 }
 
 // ─── Onboarding Wizard ────────────────────────────────────────────────────────
+function SectionComptable({ company }) {
+  return (
+    <div className="fade-in" style={{ padding: '28px 32px', display: 'grid', gap: 20 }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Espace expert-comptable</h2>
+        <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, maxWidth: 720 }}>
+          Invitez votre comptable en lecture seule. Il peut consulter factures, dépenses et TVA sans modifier vos données.
+        </p>
+      </div>
+      <InviteComptable company={company} />
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18, fontSize: 13, color: '#475569' }}>
+        Accès prévu : factures, dépenses, TVA et exports. Mutations bloquées côté API pour le rôle comptable.
+      </div>
+    </div>
+  );
+}
+
 const ONBOARDING_STEPS = [
   { key: 'video',    icon: '🎬', title: 'Regarder la vidéo de bienvenue', desc: '2 min pour comprendre FacturEasy et Chorus Pro', cta: 'Voir la vidéo →', link: 'https://factureasy.fr/guides' },
   { key: 'chorus',   icon: '🔗', title: 'Connecter Chorus Pro', desc: 'Renseignez votre SIRET dans les Paramètres pour activer la connexion', cta: 'Accéder aux Paramètres', nav: 'parametres' },
   { key: 'facture',  icon: '🧾', title: 'Créer votre première facture', desc: 'Moins de 2 minutes. Elle sera transmise automatiquement au Portail Public de Facturation', cta: 'Créer une facture', nav: 'factures' },
+];
+
+const PRODUCT_ONBOARDING_STEPS = [
+  { key: 'entreprise', icon: '🏢', title: 'Mon entreprise', desc: 'Vérifier SIRET, email, TVA et activité.', cta: 'Ouvrir paramètres', nav: 'parametres' },
+  { key: 'objectif',   icon: '🎯', title: 'Mon objectif', desc: 'Facturer, suivre trésorerie, préparer 2026 ou inviter comptable.', cta: 'Voir cockpit', nav: 'dashboard' },
+  { key: 'clients',    icon: '👥', title: 'Mes clients', desc: 'Créer un client maintenant ou importer plus tard.', cta: 'Créer client', nav: 'clients' },
+  { key: 'facture',    icon: '🧾', title: 'Ma première facture', desc: 'Créer une facture brouillon, envoyée ou payée.', cta: 'Créer facture', nav: 'factures' },
+  { key: 'cockpit',    icon: '📊', title: 'Mon cockpit', desc: 'Voir actions prioritaires, cashflow et conformité.', cta: 'Ouvrir cockpit', nav: 'dashboard' },
 ];
 
 function OnboardingWizard({ company, onClose, onNav }) {
@@ -2919,7 +2948,7 @@ function OnboardingWizard({ company, onClose, onNav }) {
     localStorage.setItem('fe_onboarding', JSON.stringify(next));
   };
 
-  const allDone = ONBOARDING_STEPS.every((s) => done[s.key]);
+  const allDone = PRODUCT_ONBOARDING_STEPS.every((s) => done[s.key]);
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -2936,7 +2965,7 @@ function OnboardingWizard({ company, onClose, onNav }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          {ONBOARDING_STEPS.map((step, i) => {
+          {PRODUCT_ONBOARDING_STEPS.map((step, i) => {
             const isComplete = done[step.key];
             return (
               <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: 14, background: isComplete ? '#f0fdf4' : '#f8fafc', borderRadius: 12, padding: '14px 16px', border: `1.5px solid ${isComplete ? '#86efac' : '#e2e8f0'}` }}>
@@ -2977,7 +3006,7 @@ function OnboardingWizard({ company, onClose, onNav }) {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: '#94a3b8' }}>
-            {Object.values(done).filter(Boolean).length}/{ONBOARDING_STEPS.length} étapes complètes
+            {PRODUCT_ONBOARDING_STEPS.filter((s) => done[s.key]).length}/{PRODUCT_ONBOARDING_STEPS.length} étapes complètes
           </span>
           <button onClick={onClose} style={{ background: allDone ? '#4f46e5' : '#f1f5f9', color: allDone ? '#fff' : '#374151', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             {allDone ? '🎉 Commencer →' : 'Passer pour l\'instant'}
@@ -3788,6 +3817,66 @@ function SectionTresorerie({ factures, revenus, depenses }) {
 }
 
 // ─── App principal ────────────────────────────────────────────────────────────
+function SectionTresorerieCockpit({ factures = [], revenus = [], depenses = [] }) {
+  const totalEncaisse = revenus.reduce((s, r) => s + Number(r.ttc || r.montant_ttc || 0), 0);
+  const facturesPrevues = factures
+    .filter((f) => !['ACCEPTEE', 'PAYEE', 'ANNULEE'].includes(f.statut))
+    .reduce((s, f) => s + Number(f.ttc || 0), 0);
+  const totalDepense = depenses.reduce((s, d) => s + Number(d.ttc || 0), 0);
+  const tvaEstimee = Math.max(0, factures.reduce((s, f) => s + Number(f.tva || 0), 0) - depenses.reduce((s, d) => s + Number(d.tva || 0), 0));
+  const soldeActuel = totalEncaisse - totalDepense;
+  const fmtMoney = (n) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+  const rows = [30, 60, 90].map((days) => {
+    const prudence = days === 30 ? 0.9 : days === 60 ? 0.75 : 0.6;
+    const encaissements = facturesPrevues * prudence;
+    const depensesPrevues = totalDepense * (days / 30);
+    const solde = soldeActuel + encaissements - depensesPrevues - tvaEstimee;
+    return { days, encaissements, depensesPrevues, tvaEstimee, solde };
+  });
+
+  return (
+    <div className="fade-in" style={{ padding: '28px 32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16, marginBottom: 24 }}>
+        <KpiCard icon="💰" label="Solde estimé" value={fmtMoney(soldeActuel)} color={soldeActuel >= 0 ? '#4f46e5' : '#ef4444'} />
+        <KpiCard icon="📥" label="À encaisser" value={fmtMoney(facturesPrevues)} color="#10b981" />
+        <KpiCard icon="📤" label="Dépenses base" value={fmtMoney(totalDepense)} color="#ef4444" />
+        <KpiCard icon="📋" label="TVA estimée" value={fmtMoney(tvaEstimee)} color="#f59e0b" />
+      </div>
+      {rows.some((r) => r.solde < 0) && (
+        <div style={{ background:'#fef2f2', color:'#991b1b', border:'1px solid #fecaca', borderRadius:12, padding:16, marginBottom:20, fontSize:14, fontWeight:700 }}>
+          Alerte trésorerie : solde projeté négatif possible sous 90 jours.
+        </div>
+      )}
+      <div style={{ background:'#fff', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', overflow:'auto' }}>
+        <h2 style={{ fontSize:16, fontWeight:800, marginBottom:14 }}>Projection 30 / 60 / 90 jours</h2>
+        <table style={{ minWidth:760 }}>
+          <thead>
+            <tr style={{ background:'#f8fafc' }}>
+              {['Période','Encaissements probables','Dépenses prévues','TVA prévue','Solde projeté'].map((h) => (
+                <th key={h} style={{ padding:'11px 14px', fontSize:12, color:'#64748b', fontWeight:700 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.days} style={{ borderTop:'1px solid #f1f5f9' }}>
+                <td style={{ padding:'13px 14px', fontWeight:800 }}>{r.days} jours</td>
+                <td style={{ padding:'13px 14px' }}>{fmtMoney(r.encaissements)}</td>
+                <td style={{ padding:'13px 14px' }}>{fmtMoney(r.depensesPrevues)}</td>
+                <td style={{ padding:'13px 14px' }}>{fmtMoney(r.tvaEstimee)}</td>
+                <td style={{ padding:'13px 14px', color:r.solde < 0 ? '#dc2626' : '#047857', fontWeight:800 }}>{fmtMoney(r.solde)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ marginTop:14, fontSize:12, color:'#64748b' }}>
+          Calcul simple : factures non payées, revenus, dépenses et TVA estimée. Banque plus tard.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PublicLanding({ onStart }) {
   return (
     <iframe
@@ -3882,7 +3971,7 @@ export default function App() {
   useEffect(() => {
     if (!company || showPlanSelection) return;
     const saved = JSON.parse(localStorage.getItem('fe_onboarding') || '{}');
-    const allDone = ONBOARDING_STEPS.every((s) => saved[s.key]);
+    const allDone = PRODUCT_ONBOARDING_STEPS.every((s) => saved[s.key]);
     if (!allDone) setShowOnboarding(true);
   }, [company, showPlanSelection]);
 
@@ -3957,9 +4046,11 @@ export default function App() {
       case 'recurrentes':
         return <SectionRecurrentes company={company} showModal={showModal} setShowModal={setShowModal} />;
       case 'tresorerie':
-        return <SectionTresorerie factures={factures} revenus={revenus} depenses={depenses} />;
+        return <SectionTresorerieCockpit factures={factures} revenus={revenus} depenses={depenses} />;
       case 'plans':
         return <SectionPlans company={company} />;
+      case 'comptable':
+        return <SectionComptable company={company} />;
       case 'parametres':
         return <SectionParametres company={company} />;
       default:
