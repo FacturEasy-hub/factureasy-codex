@@ -106,6 +106,21 @@ function apiCall(path, options = {}) {
   });
 }
 
+async function downloadApiFile(path, filename) {
+  const token = localStorage.getItem('fe_token');
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Téléchargement impossible');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Styles globaux ───────────────────────────────────────────────────────────
 function GlobalStyles() {
   return (
@@ -2908,6 +2923,17 @@ function InviteComptable({ company }) {
 
 // ─── Onboarding Wizard ────────────────────────────────────────────────────────
 function SectionComptable({ company }) {
+  const [exportMsg, setExportMsg] = useState('');
+  const handleExport = async () => {
+    setExportMsg('');
+    try {
+      await downloadApiFile('/exports/factures.csv', `factures_${company?.siret || 'export'}.csv`);
+      setExportMsg('Export téléchargé.');
+    } catch (e) {
+      setExportMsg(e.message || 'Export impossible.');
+    }
+  };
+
   return (
     <div className="fade-in" style={{ padding: '28px 32px', display: 'grid', gap: 20 }}>
       <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
@@ -2917,6 +2943,12 @@ function SectionComptable({ company }) {
         </p>
       </div>
       <InviteComptable company={company} />
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+        <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>Exports</h3>
+        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>CSV factures pour suivi comptable simple.</p>
+        <Btn onClick={handleExport}>Télécharger factures CSV</Btn>
+        {exportMsg && <div style={{ marginTop: 10, fontSize: 13, color: exportMsg.includes('impossible') ? '#dc2626' : '#047857' }}>{exportMsg}</div>}
+      </div>
       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18, fontSize: 13, color: '#475569' }}>
         Accès prévu : factures, dépenses, TVA et exports. Mutations bloquées côté API pour le rôle comptable.
       </div>
@@ -3064,6 +3096,43 @@ function ChorusStatus() {
 
 
 // ─── Section Plans & abonnement ──────────────────────────────────────────────
+function RegulatoryEventsPanel() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiCall('/regulatory-events?limit=20')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setEvents(Array.isArray(data) ? data : []))
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', gridColumn: '1 / -1' }}>
+      <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12 }}>Historique conformité</h3>
+      {loading ? (
+        <div style={{ fontSize: 13, color: '#64748b' }}>Chargement…</div>
+      ) : events.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#64748b' }}>Aucun événement réglementaire pour le moment.</div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {events.map((ev) => (
+            <div key={ev.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+                <strong style={{ fontSize: 13, color: '#0f172a' }}>{ev.channel}</strong>
+                <span style={{ fontSize: 11, color: ev.status === 'SENT' ? '#047857' : '#475569', fontWeight: 800 }}>{ev.status}</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Facture #{ev.invoice_id || '-'} · {ev.created_at ? fmtDate(ev.created_at) : ''}</div>
+              {ev.error_message && <div style={{ marginTop: 6, fontSize: 12, color: '#dc2626' }}>{ev.error_message}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SectionChorus({ company, onNav }) {
   return (
     <div className="fade-in" style={{ padding: '28px 32px', display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start' }}>
@@ -3092,6 +3161,7 @@ function SectionChorus({ company, onNav }) {
           <Btn variant="ghost" onClick={() => onNav('parametres')}>Ouvrir paramètres</Btn>
         </div>
       </div>
+      <RegulatoryEventsPanel />
     </div>
   );
 }
