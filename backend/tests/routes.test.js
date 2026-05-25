@@ -218,6 +218,13 @@ describe('POST /auth/login', function() {
     expect(res.status).toBe(400);
   });
 
+  it('refuse une connexion SIRET seul sans mot de passe', async function() {
+    var res = await request(app).post('/auth/login').send({
+      siret: '12345678901234', nom: 'Test SARL', email: 'test@example.com',
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('retourne un token JWT valide + entreprise', async function() {
     var res = await request(app).post('/auth/login').send({
       siret: '12345678901234', nom: 'Test SARL', email: 'test@example.com', password: 'motdepasse123',
@@ -321,6 +328,9 @@ describe('POST /factures', function() {
     expect(res.body.montant_ttc).toBe(588);
     expect(res.body.statut).toBe('EMISE');
     expect(res.body.emetteur_siret).toBe('12345678901234');
+    expect(mockQuery.mock.calls.some(function(call) {
+      return /INSERT INTO regulatory_events/.test(String(call[0]));
+    })).toBe(true);
   });
 
   it('calcule correctement le TTC a 10%', async function() {

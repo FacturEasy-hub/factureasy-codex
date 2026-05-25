@@ -703,6 +703,29 @@ function SectionDashboard({ factures, depenses, onNav }) {
     };
   });
   const maxVal = Math.max(1, ...graphData.map((d) => Math.max(d.ca, d.depenses)));
+  const openInvoices = factures.filter((f) => !['ACCEPTEE', 'PAYEE', 'ANNULEE'].includes(f.statut));
+  const caMois = graphData[graphData.length - 1]?.ca || 0;
+  const depMois = graphData[graphData.length - 1]?.depenses || 0;
+  const tvaEstimee = Math.max(0, tvaReverse);
+  const soldeEstime = resultatNet - tvaEstimee;
+  const projectionRows = [30, 60, 90].map((days) => {
+    const encaissements = openInvoices.reduce((s, f) => s + Number(f.ttc || 0), 0);
+    const depensesPrevues = depMois * (days / 30);
+    const soldeProjete = soldeEstime + encaissements - depensesPrevues - tvaEstimee;
+    return { days, encaissements, depensesPrevues, tvaPrevue: tvaEstimee, soldeProjete };
+  });
+  const priorityActions = [
+    openInvoices.length && { title: `${openInvoices.length} facture(s) à suivre`, priority: 'Moyenne', amount: openInvoices.reduce((s, f) => s + Number(f.ttc || 0), 0), action: 'Voir', nav: 'factures' },
+    tvaEstimee > 0 && { title: 'TVA estimée à vérifier', priority: 'Moyenne', amount: tvaEstimee, action: 'Contrôler', nav: 'tva' },
+    !hasActivity && { title: 'Créer votre première facture', priority: 'Haute', amount: null, action: 'Créer', nav: 'factures' },
+    { title: 'Inviter votre expert-comptable', priority: 'Basse', amount: null, action: 'Inviter', nav: 'comptable' },
+  ].filter(Boolean).slice(0, 5);
+  const assistantNotes = [
+    openInvoices.length ? `${openInvoices.length} facture(s) attendent une action.` : null,
+    tvaEstimee > 0 ? `TVA estimée : ${fmt(tvaEstimee)}.` : null,
+    projectionRows.some((r) => r.soldeProjete < 0) ? 'Votre trésorerie pourrait passer sous 0 sur 90 jours.' : null,
+    'FacturEasy prépare Chorus Pro, e-reporting et facture électronique sans se présenter comme PDP.',
+  ].filter(Boolean);
 
   return (
     <div className="fade-in" style={{ padding: '28px 32px' }}>
@@ -856,6 +879,50 @@ function SectionDashboard({ factures, depenses, onNav }) {
               </div>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 24, marginBottom: 28 }}>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Trésorerie 30 / 60 / 90 jours</h2>
+          <table>
+            <thead><tr>{['Période', 'Encaissements', 'Dépenses', 'TVA', 'Solde projeté'].map((h) => <th key={h} style={{ padding: 10, fontSize: 12, color: '#64748b' }}>{h}</th>)}</tr></thead>
+            <tbody>{projectionRows.map((r) => (
+              <tr key={r.days} style={{ borderTop: '1px solid #f1f5f9' }}>
+                <td style={{ padding: 10, fontWeight: 700 }}>{r.days} jours</td>
+                <td style={{ padding: 10 }}>{fmt(r.encaissements)}</td>
+                <td style={{ padding: 10 }}>{fmt(r.depensesPrevues)}</td>
+                <td style={{ padding: 10 }}>{fmt(r.tvaPrevue)}</td>
+                <td style={{ padding: 10, color: r.soldeProjete < 0 ? '#dc2626' : '#047857', fontWeight: 700 }}>{fmt(r.soldeProjete)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Inbox Finance</h2>
+          {priorityActions.map((a) => (
+            <button key={a.title} onClick={() => onNav(a.nav)} style={{ width: '100%', textAlign: 'left', padding: 12, border: '1px solid #e5e7eb', background: '#fff', borderRadius: 10, marginBottom: 8, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><strong style={{ fontSize: 13 }}>{a.title}</strong><span style={{ fontSize: 11, color: a.priority === 'Haute' ? '#dc2626' : '#64748b' }}>{a.priority}</span></div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{a.amount ? fmt(a.amount) + ' · ' : ''}{a.action}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 28 }}>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Conformité</h2>
+          {[
+            ['Facture électronique B2B', 'Données prêtes'],
+            ['e-reporting B2C / export', 'Structure préparée'],
+            ['Chorus Pro B2G', 'Connexion à configurer'],
+            ['Archivage', 'À vérifier'],
+            ['Expert-comptable', 'Invitation disponible'],
+          ].map(([k, v]) => <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}><span>{k}</span><strong>{v}</strong></div>)}
+        </div>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Assistant FacturEasy</h2>
+          {assistantNotes.map((n) => <div key={n} style={{ background: '#f8fafc', borderRadius: 10, padding: 12, fontSize: 13, color: '#334155', marginBottom: 8 }}>{n}</div>)}
         </div>
       </div>
 

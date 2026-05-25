@@ -291,6 +291,26 @@ app.get('/init-db', requireAdmin, async (req, res) => {
       );
       CREATE INDEX IF NOT EXISTS idx_devis_siret  ON devis(siret);
       CREATE INDEX IF NOT EXISTS idx_devis_lignes ON devis_lignes(devis_id);
+
+      CREATE TABLE IF NOT EXISTS regulatory_events (
+        id              SERIAL PRIMARY KEY,
+        entreprise_id   INTEGER,
+        siret           VARCHAR(14) NOT NULL,
+        invoice_id      INTEGER,
+        transaction_id  INTEGER,
+        channel         VARCHAR(40) NOT NULL,
+        status          VARCHAR(30) NOT NULL DEFAULT 'PREPARED',
+        payload_json    JSONB,
+        response_json   JSONB,
+        error_message   TEXT,
+        next_retry_at   TIMESTAMPTZ,
+        created_at      TIMESTAMPTZ DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_reg_events_siret      ON regulatory_events(siret);
+      CREATE INDEX IF NOT EXISTS idx_reg_events_invoice    ON regulatory_events(invoice_id);
+      CREATE INDEX IF NOT EXISTS idx_reg_events_status     ON regulatory_events(status);
+      CREATE INDEX IF NOT EXISTS idx_reg_events_created_at ON regulatory_events(created_at);
     `);
     res.json({ ok: true, message: 'Schéma initialisé' });
   } catch (err) {
@@ -487,6 +507,12 @@ app.get('/factures/:id(\\d+)', authenticate, async (req, res) => {
   }
 });
 
+function regulatoryChannelForInvoice(clientSiret) {
+  if (!clientSiret) return 'B2C_E_REPORTING';
+  // Heuristic MVP: public sector SIRET and B2G detection need a real referential later.
+  return 'B2B_FR_E_INVOICING';
+}
+
 app.post('/factures', authenticate, async (req, res) => {
   try {
     const client_siret = sanitizeText(req.body.client_siret, 14);
@@ -514,6 +540,11 @@ app.post('/factures', authenticate, async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'BROUILLON',NULL) RETURNING *`,
         [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc]
       );
+      await pool.query(
+        `INSERT INTO regulatory_events (siret, invoice_id, channel, status, payload_json)
+         VALUES ($1,$2,$3,'PREPARED',$4)`,
+        [emetteur_siret, rows[0].id, regulatoryChannelForInvoice(client_siret), { client_siret, montant_ht, tva }]
+      ).catch(() => {});
       return res.status(201).json(rows[0]);
     }
 
@@ -549,6 +580,11 @@ app.post('/factures', authenticate, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'EMISE',$9) RETURNING *`,
       [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, chorus_id]
     );
+    await pool.query(
+      `INSERT INTO regulatory_events (siret, invoice_id, channel, status, payload_json, response_json)
+       VALUES ($1,$2,'B2G_CHORUS_PRO','SENT',$3,$4)`,
+      [emetteur_siret, rows[0].id, payload, chorusRes.data || {}]
+    ).catch(() => {});
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
