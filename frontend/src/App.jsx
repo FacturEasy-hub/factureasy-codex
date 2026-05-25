@@ -332,6 +332,8 @@ function LoginScreen({ onLogin }) {
   const [nom, setNom] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -379,6 +381,45 @@ function LoginScreen({ onLogin }) {
       setError('Impossible de joindre le serveur. Vérifiez votre connexion.');
     }
     setLoading(false);
+  };
+
+  const requestOtp = async () => {
+    setError('');
+    if (siret.length !== 14 || !/^\d{14}$/.test(siret)) return setError('Le SIRET doit contenir exactement 14 chiffres.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setError('Un email professionnel valide est requis.');
+    setLoading(true);
+    try {
+      const res = await apiCall('/auth/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({ siret, email: email.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Impossible d’envoyer le code');
+      setOtpRequested(true);
+    } catch (e) {
+      setError(e.message || 'Impossible de joindre le serveur.');
+    }
+    setLoading(false);
+  };
+
+  const verifyOtp = async () => {
+    setError('');
+    if (!/^\d{6}$/.test(otpCode)) return setError('Code à 6 chiffres requis.');
+    setLoading(true);
+    try {
+      const res = await apiCall('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ siret, email: email.trim(), code: otpCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Code invalide');
+      localStorage.setItem('fe_token', data.token);
+      localStorage.setItem('fe_company', JSON.stringify(data.entreprise || { siret, nom }));
+      onLogin(data.entreprise || { siret, nom });
+    } catch (e) {
+      setError(e.message || 'Impossible de vérifier le code.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -457,6 +498,19 @@ function LoginScreen({ onLogin }) {
               required
             />
           </Field>
+          {otpRequested && (
+            <Field label="Code email">
+              <input
+                style={inputStyle}
+                type="text"
+                inputMode="numeric"
+                placeholder="123456"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                maxLength={6}
+              />
+            </Field>
+          )}
           {error && (
             <div
               style={{
@@ -489,6 +543,26 @@ function LoginScreen({ onLogin }) {
             }}
           >
             {loading ? 'Connexion…' : 'Créer / accéder à mon espace client →'}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={otpRequested ? verifyOtp : requestOtp}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: '#fff',
+              color: '#4f46e5',
+              border: '1px solid #c7d2fe',
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              marginTop: 10,
+            }}
+          >
+            {otpRequested ? 'Valider le code email' : 'Recevoir un code par email'}
           </button>
         </form>
         <p style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 24 }}>

@@ -20,10 +20,12 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
     entreprises: [],
     clients: [],
     factures: [],
+    authOtps: [],
     invoiceSequences: [],
     nextEntrepriseId: 1,
     nextClientId: 1,
     nextFactureId: 1,
+    nextOtpId: 1,
   };
 
   const nowIso = () => new Date().toISOString();
@@ -54,10 +56,49 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
 
     if (/^(CREATE|ALTER|BEGIN|COMMIT|ROLLBACK)/i.test(s)) return empty();
 
-    if (/SELECT (?:\*|id) FROM entreprises WHERE siret = \$1/i.test(s)) {
+    if (/SELECT (?:\*|id) FROM entreprises WHERE siret = \$1(?! AND email)/i.test(s)) {
       const row = state.entreprises.find((e) => e.siret === params[0]);
       if (!row) return empty();
       return { rows: [/SELECT id FROM/i.test(s) ? { id: row.id } : row], rowCount: 1 };
+    }
+
+    if (/SELECT id, siret, nom, email FROM entreprises WHERE siret = \$1 AND email = \$2/i.test(s)) {
+      const row = state.entreprises.find((e) => e.siret === params[0] && String(e.email || '').toLowerCase() === String(params[1] || '').toLowerCase());
+      return { rows: row ? [publicEntreprise(row)] : [], rowCount: row ? 1 : 0 };
+    }
+
+    if (/SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = \$1 AND email = \$2/i.test(s)) {
+      const row = state.entreprises.find((e) => e.siret === params[0] && String(e.email || '').toLowerCase() === String(params[1] || '').toLowerCase());
+      return { rows: row ? [publicEntreprise(row)] : [], rowCount: row ? 1 : 0 };
+    }
+
+    if (/INSERT INTO auth_otps/i.test(s)) {
+      const row = {
+        id: state.nextOtpId++,
+        siret: params[0],
+        email: params[1],
+        code_hash: params[2],
+        expires_at: params[3],
+        used_at: null,
+        created_at: nowIso(),
+      };
+      state.authOtps.push(row);
+      return { rows: [row], rowCount: 1 };
+    }
+
+    if (/FROM auth_otps/i.test(s)) {
+      const now = Date.now();
+      const row = state.authOtps
+        .filter((o) => o.siret === params[0] && String(o.email || '').toLowerCase() === String(params[1] || '').toLowerCase() && !o.used_at && new Date(o.expires_at).getTime() > now)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
+    }
+
+    if (/UPDATE auth_otps SET used_at/i.test(s)) {
+      const row = state.authOtps.find((o) => o.id === params[0]);
+      if (!row) return empty();
+      row.used_at = nowIso();
+      return { rows: [row], rowCount: 1 };
     }
 
     if (/SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = \$1/i.test(s)) {

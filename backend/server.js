@@ -220,6 +220,17 @@ app.get('/init-db', requireAdmin, async (req, res) => {
       CREATE INDEX IF NOT EXISTS idx_factures_siret  ON factures(emetteur_siret);
       CREATE INDEX IF NOT EXISTS idx_factures_statut ON factures(statut);
 
+      CREATE TABLE IF NOT EXISTS auth_otps (
+        id            SERIAL PRIMARY KEY,
+        siret         VARCHAR(14) NOT NULL,
+        email         VARCHAR(255) NOT NULL,
+        code_hash     TEXT NOT NULL,
+        expires_at    TIMESTAMPTZ NOT NULL,
+        used_at       TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_auth_otps_lookup ON auth_otps(siret, email, expires_at);
+
       CREATE TABLE IF NOT EXISTS clients (
         id            SERIAL PRIMARY KEY,
         siret         VARCHAR(14) NOT NULL,
@@ -372,6 +383,63 @@ app.post('/auth/login', async (req, res) => {
 // ─── Auth : profil courant ────────────────────────────────────────────────────
 
 // GET /auth/me — retourne l'entreprise connectée (plan, trial_ends_at, etc.)
+app.post('/auth/request-otp', async (req, res) => {
+  try {
+    const siret = sanitizeText(req.body.siret, 14);
+    const email = normalizeEmail(req.body.email);
+    if (!validateSiret(siret)) return res.status(400).json({ error: 'SIRET invalide — 14 chiffres attendus' });
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Email professionnel valide requis' });
+    const { rows } = await pool.query('SELECT id, siret, nom, email FROM entreprises WHERE siret = $1 AND email = $2', [siret, email]);
+    if (!rows[0]) return res.status(404).json({ error: 'Aucun compte trouvé pour ce SIRET et cet email' });
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await pool.query(
+      `INSERT INTO auth_otps (siret, email, code_hash, expires_at)
+       VALUES ($1,$2,$3,NOW() + INTERVAL '10 minutes')`,
+      [siret, email, hashPassword(code)]
+    );
+    await require('./services/mailer').sendOtp(email, { code });
+    res.json({ ok: true, message: 'Code envoyé par email' });
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[auth/request-otp]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
+
+app.post('/auth/verify-otp', async (req, res) => {
+  try {
+    const siret = sanitizeText(req.body.siret, 14);
+    const email = normalizeEmail(req.body.email);
+    const code = sanitizeText(req.body.code, 12);
+    if (!validateSiret(siret) || !validateEmail(email) || !/^\d{6}$/.test(code || '')) {
+      return res.status(400).json({ error: 'Code, SIRET ou email invalide' });
+    }
+    const otp = await pool.query(
+      `SELECT * FROM auth_otps
+       WHERE siret = $1 AND email = $2 AND used_at IS NULL AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [siret, email]
+    );
+    if (!otp.rows[0] || !verifyPassword(code, otp.rows[0].code_hash)) {
+      return res.status(401).json({ error: 'Code invalide ou expiré' });
+    }
+    await pool.query('UPDATE auth_otps SET used_at = NOW() WHERE id = $1', [otp.rows[0].id]);
+    const { rows } = await pool.query(
+      `SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at
+       FROM entreprises WHERE siret = $1 AND email = $2`,
+      [siret, email]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
+    const entreprise = rows[0];
+    const token = generateToken({ siret: entreprise.siret, nom: entreprise.nom, id: entreprise.id, email: entreprise.email, role: 'user' });
+    res.json({ token, entreprise });
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[auth/verify-otp]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
+
 app.get('/auth/me', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(

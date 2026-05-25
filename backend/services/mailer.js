@@ -112,6 +112,24 @@ function tplBienvenue({ nom, siret }) {
   };
 }
 
+function tplOtp({ code }) {
+  code = escapeHtml(code);
+  return {
+    subject: 'Code de connexion FacturEasy',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+        <div style="background:#185FA5;padding:24px 28px;border-radius:8px 8px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:20px">FacturEasy</h1>
+        </div>
+        <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+          <h2 style="font-size:17px;margin:0 0 12px">Votre code de connexion</h2>
+          <div style="font-size:28px;letter-spacing:6px;font-weight:800;color:#185FA5;background:#F1F5F9;border-radius:8px;padding:14px 18px;text-align:center">${code}</div>
+          <p style="font-size:13px;color:#6B7280;margin-top:16px">Ce code expire dans 10 minutes. Ignorez cet email si vous n'êtes pas à l'origine de la demande.</p>
+        </div>
+      </div>`
+  };
+}
+
 // ─── Fonction d'envoi générique ───────────────────────────────────────────────
 
 async function sendMail(to, { subject, html }) {
@@ -129,4 +147,5 @@ module.exports = {
   sendFactureAcceptee:(to, data) => sendMail(to, tplFactureAcceptee(data)),
   sendFactureRejetee: (to, data) => sendMail(to, tplFactureRejetee(data)),
   sendBienvenue:      (to, data) => sendMail(to, tplBienvenue(data)),
+  sendOtp:            (to, data) => sendMail(to, tplOtp(data)),
 };

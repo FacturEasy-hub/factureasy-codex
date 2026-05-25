@@ -29,6 +29,7 @@ function bearer(token) {
 
 const mockFactures = [];
 const mockEntreprises = [];
+const mockOtps = [];
 
 const mockQuery = jest.fn(async function(sql, params) {
   params = params || [];
@@ -41,6 +42,22 @@ const mockQuery = jest.fn(async function(sql, params) {
   }
   if (/SELECT \* FROM entreprises WHERE siret/.test(s)) {
     return { rows: mockEntreprises.filter(function(e) { return e.siret === params[0]; }) };
+  }
+  if (/SELECT id, siret, nom, email FROM entreprises WHERE siret/.test(s)) {
+    return { rows: mockEntreprises.filter(function(e) { return e.siret === params[0] && e.email === params[1]; }) };
+  }
+  if (/INSERT INTO auth_otps/.test(s)) {
+    var otp = { id: mockOtps.length + 1, siret: params[0], email: params[1], code_hash: params[2], expires_at: new Date(Date.now() + 600000).toISOString(), used_at: null, created_at: new Date().toISOString() };
+    mockOtps.push(otp);
+    return { rows: [otp] };
+  }
+  if (/FROM auth_otps/.test(s)) {
+    return { rows: mockOtps.filter(function(o) { return o.siret === params[0] && o.email === params[1] && !o.used_at; }).slice(-1) };
+  }
+  if (/UPDATE auth_otps SET used_at/.test(s)) {
+    var foundOtp = mockOtps.find(function(o) { return o.id === params[0]; });
+    if (foundOtp) foundOtp.used_at = new Date().toISOString();
+    return { rows: [] };
   }
   if (/UPDATE entreprises SET nom/.test(s)) {
     var e = mockEntreprises.find(function(x) { return x.siret === params[0]; });
@@ -192,6 +209,7 @@ const app = require('../server');
 beforeEach(function() {
   mockFactures.length = 0;
   mockEntreprises.length = 0;
+  mockOtps.length = 0;
   mockQuery.mockClear();
 });
 
@@ -234,6 +252,16 @@ describe('POST /auth/login', function() {
     expect(res.body).toHaveProperty('entreprise');
     var decoded = jwt.verify(res.body.token, JWT_SECRET, { issuer: 'factureasy-api', audience: 'factureasy-app' });
     expect(decoded.siret).toBe('12345678901234');
+  });
+
+  it('genere un OTP email pour un compte existant', async function() {
+    await request(app).post('/auth/login').send({
+      siret: '12345678901234', nom: 'Test SARL', email: 'test@example.com', password: 'motdepasse123',
+    });
+    var res = await request(app).post('/auth/request-otp').send({ siret: '12345678901234', email: 'test@example.com' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(mockOtps.length).toBe(1);
   });
 });
 
