@@ -351,6 +351,7 @@ function LoginScreen({ onLogin }) {
   const [otpRequested, setOtpRequested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -361,6 +362,7 @@ function LoginScreen({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     if (siret.length !== 14 || !/^\d{14}$/.test(siret)) {
       setError('Le SIRET doit contenir exactement 14 chiffres.');
       return;
@@ -400,6 +402,7 @@ function LoginScreen({ onLogin }) {
 
   const requestOtp = async () => {
     setError('');
+    setInfo('');
     if (siret.length !== 14 || !/^\d{14}$/.test(siret)) return setError('Le SIRET doit contenir exactement 14 chiffres.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setError('Un email professionnel valide est requis.');
     setLoading(true);
@@ -411,6 +414,7 @@ function LoginScreen({ onLogin }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Impossible d’envoyer le code');
       setOtpRequested(true);
+      setInfo(data.message || 'Code envoyé par email. Vérifiez aussi vos spams.');
     } catch (e) {
       setError(e.message || 'Impossible de joindre le serveur.');
     }
@@ -419,6 +423,7 @@ function LoginScreen({ onLogin }) {
 
   const verifyOtp = async () => {
     setError('');
+    setInfo('');
     if (!/^\d{6}$/.test(otpCode)) return setError('Code à 6 chiffres requis.');
     setLoading(true);
     try {
@@ -540,6 +545,20 @@ function LoginScreen({ onLogin }) {
               {error}
             </div>
           )}
+          {info && (
+            <div
+              style={{
+                background: '#d1fae5',
+                color: '#065f46',
+                borderRadius: 8,
+                padding: '10px 14px',
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
+              {info}
+            </div>
+          )}
           <button
             type="submit"
             disabled={loading}
@@ -577,7 +596,7 @@ function LoginScreen({ onLogin }) {
               marginTop: 10,
             }}
           >
-            {otpRequested ? 'Valider le code email' : 'Recevoir un code par email'}
+            {otpRequested ? 'Valider le code email' : 'Recevoir un code email (compte existant)'}
           </button>
         </form>
         <p style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 24 }}>

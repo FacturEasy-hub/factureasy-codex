@@ -133,6 +133,24 @@ function tplOtp({ code }) {
 // ─── Fonction d'envoi générique ───────────────────────────────────────────────
 
 async function sendMail(to, { subject, html }) {
+  if (process.env.RESEND_API_KEY) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: FROM, to, subject, html }),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      const err = new Error(`Email Resend refusé (${response.status})`);
+      err.status = 502;
+      err.detail = detail;
+      throw err;
+    }
+    return;
+  }
   if (!process.env.SMTP_USER) {
     console.log(`[MAILER MOCK] To: ${to} | Subject: ${subject}`);
     return;

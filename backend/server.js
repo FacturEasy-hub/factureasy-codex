@@ -401,7 +401,7 @@ app.post('/auth/request-otp', async (req, res) => {
     res.json({ ok: true, message: 'Code envoyé par email' });
   } catch (err) {
     const safe = safeError(err);
-    console.error('[auth/request-otp]', err.message);
+    console.error('[auth/request-otp]', err.message, err.detail ? String(err.detail).slice(0, 200) : '');
     res.status(safe.status).json({ error: safe.message });
   }
 });
