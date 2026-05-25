@@ -688,6 +688,50 @@ app.patch('/factures/:id(\\d+)/statut', authenticate, async (req, res) => {
 
 // ─── Statistiques ────────────────────────────────────────────────────────────
 
+app.get('/regulatory-events', authenticate, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10) || 50, 1), 200);
+    const { rows } = await pool.query(
+      `SELECT id, invoice_id, transaction_id, channel, status, error_message, created_at, updated_at
+       FROM regulatory_events
+       WHERE siret = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [req.user.siret, limit]
+    );
+    res.json(rows);
+  } catch (err) {
+    if (err.code === '42P01') return res.json([]);
+    console.error('[GET /regulatory-events]', err.message);
+    res.status(500).json({ error: 'Impossible de charger les événements réglementaires' });
+  }
+});
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+app.get('/exports/factures.csv', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT numero, date_emission, client_nom, client_siret, montant_ht, tva, montant_ttc, statut, type_document
+       FROM factures
+       WHERE emetteur_siret = $1
+       ORDER BY date_emission DESC`,
+      [req.user.siret]
+    );
+    const header = ['numero','date_emission','client_nom','client_siret','montant_ht','tva','montant_ttc','statut','type_document'];
+    const body = rows.map((row) => header.map((key) => csvCell(row[key])).join(';'));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="factures.csv"');
+    res.send([header.join(';'), ...body].join('\n'));
+  } catch (err) {
+    console.error('[GET /exports/factures.csv]', err.message);
+    res.status(500).json({ error: 'Export factures indisponible' });
+  }
+});
+
 app.get('/stats/:siret', authenticate, async (req, res) => {
   try {
     // IDOR fix: un utilisateur ne peut consulter que ses propres stats

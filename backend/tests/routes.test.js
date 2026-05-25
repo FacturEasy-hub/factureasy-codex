@@ -30,6 +30,7 @@ function bearer(token) {
 const mockFactures = [];
 const mockEntreprises = [];
 const mockOtps = [];
+const mockRegulatoryEvents = [];
 
 const mockQuery = jest.fn(async function(sql, params) {
   params = params || [];
@@ -74,6 +75,9 @@ const mockQuery = jest.fn(async function(sql, params) {
   if (/SELECT \* FROM factures WHERE id/.test(s)) {
     return { rows: mockFactures.filter(function(f) { return f.id === parseInt(params[0]); }) };
   }
+  if (/SELECT numero, date_emission, client_nom, client_siret, montant_ht, tva, montant_ttc, statut, type_document FROM factures/.test(s)) {
+    return { rows: mockFactures.filter(function(f) { return f.emetteur_siret === params[0]; }).map(function(f) { return Object.assign({ type_document: 'FAC' }, f); }) };
+  }
   if (/INSERT INTO factures/.test(s)) {
     var f = {
       id: mockFactures.length + 1,
@@ -92,6 +96,14 @@ const mockQuery = jest.fn(async function(sql, params) {
     };
     mockFactures.push(f);
     return { rows: [f] };
+  }
+  if (/INSERT INTO regulatory_events/.test(s)) {
+    var ev = { id: mockRegulatoryEvents.length + 1, siret: params[0], invoice_id: params[1], channel: params[2], status: /'SENT'/.test(s) ? 'SENT' : 'PREPARED', created_at: new Date().toISOString() };
+    mockRegulatoryEvents.push(ev);
+    return { rows: [ev] };
+  }
+  if (/FROM regulatory_events/.test(s)) {
+    return { rows: mockRegulatoryEvents.filter(function(e) { return e.siret === params[0]; }) };
   }
   if (/UPDATE factures SET statut/.test(s)) {
     var found = mockFactures.find(function(f) { return f.id === parseInt(params[1]); });
@@ -210,6 +222,7 @@ beforeEach(function() {
   mockFactures.length = 0;
   mockEntreprises.length = 0;
   mockOtps.length = 0;
+  mockRegulatoryEvents.length = 0;
   mockQuery.mockClear();
 });
 
@@ -381,6 +394,35 @@ describe('GET /stats/:siret', function() {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('total_factures');
     expect(res.body).toHaveProperty('acceptees');
+  });
+});
+
+describe('GET /regulatory-events', function() {
+  it('retourne les evenements conformite du tenant', async function() {
+    var token = makeToken({ siret: '12345678901234' });
+    await request(app).post('/factures').set(bearer(token)).send({
+      client_siret: '98765432109876', client_nom: 'Client B2B',
+      description: 'Mission', montant_ht: 100, tva: 20,
+    });
+    var res = await request(app).get('/regulatory-events').set(bearer(token));
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body[0].siret).toBe('12345678901234');
+  });
+});
+
+describe('GET /exports/factures.csv', function() {
+  it('exporte les factures en CSV pour un comptable read-only', async function() {
+    var userToken = makeToken({ siret: '12345678901234' });
+    await request(app).post('/factures').set(bearer(userToken)).send({
+      client_siret: '98765432109876', client_nom: 'Client Export',
+      description: 'Mission', montant_ht: 100, tva: 20,
+    });
+    var comptableToken = makeToken({ siret: '12345678901234', role: 'comptable' });
+    var res = await request(app).get('/exports/factures.csv').set(bearer(comptableToken));
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('numero;date_emission;client_nom');
+    expect(res.text).toContain('Client Export');
   });
 });
 

@@ -21,11 +21,13 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
     clients: [],
     factures: [],
     authOtps: [],
+    regulatoryEvents: [],
     invoiceSequences: [],
     nextEntrepriseId: 1,
     nextClientId: 1,
     nextFactureId: 1,
     nextOtpId: 1,
+    nextRegulatoryEventId: 1,
   };
 
   const nowIso = () => new Date().toISOString();
@@ -235,6 +237,14 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
       return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
     }
 
+    if (/SELECT numero, date_emission, client_nom, client_siret, montant_ht, tva, montant_ttc, statut, type_document FROM factures/i.test(s)) {
+      const rows = state.factures
+        .filter((f) => f.emetteur_siret === params[0])
+        .sort((a, b) => String(b.date_emission).localeCompare(String(a.date_emission)))
+        .map((f) => ({ ...f, type_document: f.type_document || 'FAC' }));
+      return { rows, rowCount: rows.length };
+    }
+
     if (/INSERT INTO factures/i.test(s)) {
       const row = {
         id: state.nextFactureId++,
@@ -254,6 +264,33 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
       };
       state.factures.push(row);
       return { rows: [row], rowCount: 1 };
+    }
+
+    if (/INSERT INTO regulatory_events/i.test(s)) {
+      const row = {
+        id: state.nextRegulatoryEventId++,
+        siret: params[0],
+        invoice_id: params[1] || null,
+        transaction_id: null,
+        channel: params[2],
+        status: /'SENT'/i.test(s) ? 'SENT' : 'PREPARED',
+        payload_json: params[3] || {},
+        response_json: params[4] || null,
+        error_message: null,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      };
+      state.regulatoryEvents.push(row);
+      return { rows: [row], rowCount: 1 };
+    }
+
+    if (/FROM regulatory_events/i.test(s)) {
+      const limit = Number(params[1] || 50);
+      const rows = state.regulatoryEvents
+        .filter((e) => e.siret === params[0])
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+        .slice(0, limit);
+      return { rows, rowCount: rows.length };
     }
 
     if (/UPDATE factures SET statut/i.test(s)) {
