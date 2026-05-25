@@ -2,56 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// ─── Données mock ────────────────────────────────────────────────────────────
-const MOCK_COMPANY = {
-  siret: '12345678901234',
-  nom: 'Tech Solutions SARL',
-  email: 'contact@techsolutions.fr',
-  telephone: '01 23 45 67 89',
-  adresse: '12 rue de la Paix, 75001 Paris',
-};
-
-const MOCK_FACTURES = [
-  { id: 1, numero: 'FA-2024-001', client: 'Acme Corp', siretClient: '98765432100012', date: '2024-11-01', montantHT: 2500, tva: 500, ttc: 3000, statut: 'ACCEPTEE', numeroEngagement: 'ENG-001' },
-  { id: 2, numero: 'FA-2024-002', client: 'Beta SAS', siretClient: '11223344556677', date: '2024-11-10', montantHT: 1800, tva: 360, ttc: 2160, statut: 'EN_COURS', numeroEngagement: 'ENG-002' },
-  { id: 3, numero: 'FA-2024-003', client: 'Gamma SA', siretClient: '55667788990011', date: '2024-11-15', montantHT: 4200, tva: 840, ttc: 5040, statut: 'EMISE', numeroEngagement: '' },
-  { id: 4, numero: 'FA-2024-004', client: 'Delta EURL', siretClient: '33445566778899', date: '2024-10-20', montantHT: 900, tva: 180, ttc: 1080, statut: 'REJETEE', numeroEngagement: 'ENG-004' },
-  { id: 5, numero: 'FA-2024-005', client: 'Epsilon Ltd', siretClient: '44556677889900', date: '2024-10-05', montantHT: 3100, tva: 620, ttc: 3720, statut: 'ACCEPTEE', numeroEngagement: 'ENG-005' },
-];
-
-const MOCK_REVENUS = [
-  { id: 1, date: '2024-11-01', source: 'Facture', client: 'Acme Corp', montantHT: 2500, tva: 500, ttc: 3000, statut: 'ENCAISSE' },
-  { id: 2, date: '2024-10-05', source: 'Facture', client: 'Epsilon Ltd', montantHT: 3100, tva: 620, ttc: 3720, statut: 'ENCAISSE' },
-  { id: 3, date: '2024-09-15', source: 'Manuel', client: 'Zeta Corp', montantHT: 1500, tva: 300, ttc: 1800, statut: 'ENCAISSE' },
-  { id: 4, date: '2024-11-10', source: 'Facture', client: 'Beta SAS', montantHT: 1800, tva: 360, ttc: 2160, statut: 'EN_ATTENTE' },
-  { id: 5, date: '2024-11-15', source: 'Facture', client: 'Gamma SA', montantHT: 4200, tva: 840, ttc: 5040, statut: 'EN_ATTENTE' },
-];
-
-const MOCK_DEPENSES = [
-  { id: 1, date: '2024-11-02', libelle: 'Abonnement OVH', categorie: 'Hébergement', montantHT: 83.33, tva: 16.67, ttc: 100, justificatif: '' },
-  { id: 2, date: '2024-11-05', libelle: 'Fournitures bureau', categorie: 'Fournitures', montantHT: 166.67, tva: 33.33, ttc: 200, justificatif: '' },
-  { id: 3, date: '2024-11-08', libelle: 'Déplacement Paris-Lyon', categorie: 'Transport', montantHT: 145.83, tva: 0, ttc: 145.83, justificatif: '' },
-  { id: 4, date: '2024-10-15', libelle: 'Logiciel comptabilité', categorie: 'Logiciels', montantHT: 250, tva: 50, ttc: 300, justificatif: '' },
-  { id: 5, date: '2024-10-20', libelle: 'Repas client', categorie: 'Restaurant', montantHT: 85.42, tva: 5.08, ttc: 90.50, justificatif: '' },
-];
-
-const MOCK_TVA_HISTORY = [
-  { periode: 'Octobre 2024', collectee: 1400, deductible: 320, montant: 1080, statut: 'DECLAREE' },
-  { periode: 'Septembre 2024', collectee: 980, deductible: 210, montant: 770, statut: 'DECLAREE' },
-  { periode: 'Août 2024', collectee: 1650, deductible: 380, montant: 1270, statut: 'DECLAREE' },
-  { periode: 'Juillet 2024', collectee: 720, deductible: 155, montant: 565, statut: 'DECLAREE' },
-];
-
-const MOCK_GRAPH_DATA = [
-  { mois: 'Juin', ca: 4200, depenses: 800 },
-  { mois: 'Juil', ca: 3100, depenses: 620 },
-  { mois: 'Août', ca: 5500, depenses: 950 },
-  { mois: 'Sept', ca: 2900, depenses: 540 },
-  { mois: 'Oct', ca: 6200, depenses: 1100 },
-  { mois: 'Nov', ca: 4800, depenses: 836 },
-];
-
-// ─── Utilitaires ─────────────────────────────────────────────────────────────
+// Utilitaires ─────────────────────────────────────────────────────────────
 const fmt = (n) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('fr-FR') : '-');
@@ -480,7 +431,6 @@ function LoginScreen({ onLogin }) {
             <input
               style={inputStyle}
               type="text"
-              placeholder="12345678901234"
               value={siret}
               onChange={(e) => setSiret(e.target.value.replace(/\D/g, '').slice(0, 14))}
               maxLength={14}
@@ -491,7 +441,6 @@ function LoginScreen({ onLogin }) {
             <input
               style={inputStyle}
               type="text"
-              placeholder="Tech Solutions SARL"
               value={nom}
               onChange={(e) => setNom(e.target.value)}
               required
@@ -501,7 +450,6 @@ function LoginScreen({ onLogin }) {
             <input
               style={inputStyle}
               type="email"
-              placeholder="contact@entreprise.fr"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -511,7 +459,6 @@ function LoginScreen({ onLogin }) {
             <input
               style={inputStyle}
               type="password"
-              placeholder="8 caractères minimum"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={8}
@@ -524,7 +471,6 @@ function LoginScreen({ onLogin }) {
                 style={inputStyle}
                 type="text"
                 inputMode="numeric"
-                placeholder="123456"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 maxLength={6}
@@ -1120,21 +1066,6 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const hasClients = clients.length > 0;
 
-  useEffect(() => {
-    if (!hasClients || form.selectedClientId || form.clientMode !== 'existing') return;
-    const c = clients[0];
-    setForm((f) => ({
-      ...f,
-      selectedClientId: String(c.id),
-      siretClient: c.siret_client || '',
-      client: c.nom || '',
-      clientEmail: c.email || '',
-      clientTelephone: c.telephone || '',
-      clientAdresse: c.adresse || '',
-      clientType: c.client_type || 'B2B_FR',
-    }));
-  }, [clients, hasClients, form.selectedClientId, form.clientMode]);
-
   const applyExistingClient = (id) => {
     const c = clients.find((row) => String(row.id) === String(id));
     if (!c) return setForm((f) => ({ ...f, selectedClientId: id }));
@@ -1223,6 +1154,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
             applyExistingClient(e.target.value);
           }}
         >
+          <option value="">Choisir un client</option>
           {hasClients ? clients.map((c) => (
             <option key={c.id} value={c.id}>{c.nom}{c.siret_client ? ` - ${c.siret_client}` : ''}{c.client_type === 'B2G_PUBLIC' ? ' - Chorus Pro' : ''}</option>
           )) : <option value="__new__">Aucun client enregistré</option>}
@@ -1233,7 +1165,6 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
         <div style={{ position: 'relative' }}>
           <input
             style={inputStyle}
-            placeholder="98765432100012"
             value={form.siretClient}
             onChange={(e) => {
               setSireneHint('');
@@ -1255,7 +1186,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
         )}
       </Field>
       <Field label="Nom client *">
-        <input style={inputStyle} placeholder="Acme Corp" value={form.client} onChange={(e) => setForm((f) => ({ ...f, client: e.target.value, clientMode: 'new', selectedClientId: '' }))} />
+        <input style={inputStyle} value={form.client} onChange={(e) => setForm((f) => ({ ...f, client: e.target.value, clientMode: 'new', selectedClientId: '' }))} />
       </Field>
       {form.clientMode === 'new' && (
         <Field label="Canal reglementaire">
@@ -1275,22 +1206,21 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
       {form.clientMode === 'new' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Email client">
-            <input style={inputStyle} type="email" placeholder="contact@client.fr" value={form.clientEmail} onChange={set('clientEmail')} />
+            <input style={inputStyle} type="email" value={form.clientEmail} onChange={set('clientEmail')} />
           </Field>
           <Field label="Téléphone client">
-            <input style={inputStyle} placeholder="01 23 45 67 89" value={form.clientTelephone} onChange={set('clientTelephone')} />
+            <input style={inputStyle} value={form.clientTelephone} onChange={set('clientTelephone')} />
           </Field>
         </div>
       )}
       {form.clientMode === 'new' && (
         <Field label="Adresse client">
-          <textarea style={{ ...inputStyle, minHeight: 64 }} placeholder="Adresse de facturation" value={form.clientAdresse} onChange={set('clientAdresse')} />
+          <textarea style={{ ...inputStyle, minHeight: 64 }} value={form.clientAdresse} onChange={set('clientAdresse')} />
         </Field>
       )}
       <Field label="Description">
         <input
           style={inputStyle}
-          placeholder="Prestation de développement web"
           value={form.description}
           onChange={set('description')}
         />
@@ -1300,7 +1230,6 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
           <input
             style={inputStyle}
             type="number"
-            placeholder="1000"
             value={form.montantHT}
             onChange={set('montantHT')}
           />
@@ -1318,7 +1247,6 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
       <Field label="Numéro d'engagement">
         <input
           style={inputStyle}
-          placeholder="ENG-001 (optionnel)"
           value={form.numeroEngagement}
           onChange={set('numeroEngagement')}
         />
@@ -1562,7 +1490,6 @@ function SectionClients({ showModal, setShowModal }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           style={{ ...inputStyle, maxWidth: 420 }}
-          placeholder="Rechercher client, SIRET, email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -1605,8 +1532,8 @@ function SectionClients({ showModal, setShowModal }) {
       {showModal && (
         <Modal title="Nouveau client" onClose={() => setShowModal(false)}>
           {msg && <div style={{ color: '#991b1b', background: '#fee2e2', padding: 10, borderRadius: 8, marginBottom: 12 }}>{msg}</div>}
-          <Field label="Nom client *"><input style={inputStyle} value={form.nom} onChange={set('nom')} placeholder="Acme Corp" /></Field>
-          <Field label="SIRET client"><input style={inputStyle} value={form.siret_client} onChange={(e) => setForm({ ...form, siret_client: e.target.value.replace(/\D/g, '').slice(0, 14) })} placeholder="14 chiffres" /></Field>
+          <Field label="Nom client *"><input style={inputStyle} value={form.nom} onChange={set('nom')} /></Field>
+          <Field label="SIRET client"><input style={inputStyle} value={form.siret_client} onChange={(e) => setForm({ ...form, siret_client: e.target.value.replace(/\D/g, '').slice(0, 14) })} /></Field>
           <Field label="Canal reglementaire">
             <select style={inputStyle} value={form.client_type} onChange={set('client_type')}>
               <option value="B2B_FR">Entreprise privee francaise</option>
@@ -1617,15 +1544,15 @@ function SectionClients({ showModal, setShowModal }) {
           </Field>
           {form.client_type === 'B2G_PUBLIC' && (
             <>
-              <Field label="Code service Chorus (optionnel)"><input style={inputStyle} value={form.chorus_service_code} onChange={set('chorus_service_code')} placeholder="Ex: FACTURES" /></Field>
+              <Field label="Code service Chorus (optionnel)"><input style={inputStyle} value={form.chorus_service_code} onChange={set('chorus_service_code')} /></Field>
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 12 }}>
                 <input type="checkbox" checked={form.chorus_engagement_required} onChange={(e) => setForm({ ...form, chorus_engagement_required: e.target.checked })} />
                 Numero engagement requis
               </label>
             </>
           )}
-          <Field label="Email"><input style={inputStyle} type="email" value={form.email} onChange={set('email')} placeholder="contact@client.fr" /></Field>
-          <Field label="Telephone"><input style={inputStyle} value={form.telephone} onChange={set('telephone')} placeholder="01 23 45 67 89" /></Field>
+          <Field label="Email"><input style={inputStyle} type="email" value={form.email} onChange={set('email')} /></Field>
+          <Field label="Telephone"><input style={inputStyle} value={form.telephone} onChange={set('telephone')} /></Field>
           <Field label="Adresse"><textarea style={{ ...inputStyle, minHeight: 72 }} value={form.adresse} onChange={set('adresse')} /></Field>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
             <Btn variant="ghost" onClick={() => setShowModal(false)}>Annuler</Btn>
@@ -1764,7 +1691,6 @@ function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
         </div>
         <input
           style={{ ...inputStyle, width: 320, maxWidth: '100%' }}
-          placeholder="Rechercher numéro, client, SIRET..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -1888,7 +1814,6 @@ function ModalRevenuManuel({ onClose, onSave }) {
       <Field label="Libellé *">
         <input
           style={inputStyle}
-          placeholder="Consultance décembre"
           value={form.libelle}
           onChange={set('libelle')}
         />
@@ -1896,7 +1821,6 @@ function ModalRevenuManuel({ onClose, onSave }) {
       <Field label="Client">
         <input
           style={inputStyle}
-          placeholder="Nom du client"
           value={form.client}
           onChange={set('client')}
         />
@@ -1906,7 +1830,6 @@ function ModalRevenuManuel({ onClose, onSave }) {
           <input
             style={inputStyle}
             type="number"
-            placeholder="1200"
             value={form.ttc}
             onChange={set('ttc')}
           />
@@ -2076,7 +1999,6 @@ function ModalNouvelleDepense({ onClose, onSave }) {
       <Field label="Libellé *">
         <input
           style={inputStyle}
-          placeholder="Abonnement logiciel"
           value={form.libelle}
           onChange={set('libelle')}
         />
@@ -2100,7 +2022,6 @@ function ModalNouvelleDepense({ onClose, onSave }) {
           <input
             style={inputStyle}
             type="number"
-            placeholder="120"
             value={form.ttc}
             onChange={set('ttc')}
           />
@@ -2118,7 +2039,6 @@ function ModalNouvelleDepense({ onClose, onSave }) {
       <Field label="URL Justificatif">
         <input
           style={inputStyle}
-          placeholder="https://…"
           value={form.justificatif}
           onChange={set('justificatif')}
         />
@@ -2609,14 +2529,14 @@ function ModalNouveauModele({ onClose, onSave }) {
   return (
     <Modal title="Nouveau modèle récurrent" onClose={onClose}>
       <Field label="Client *">
-        <input style={inputStyle} placeholder="Acme Corp" value={form.client} onChange={set('client')} />
+        <input style={inputStyle} value={form.client} onChange={set('client')} />
       </Field>
       <Field label="Description">
-        <input style={inputStyle} placeholder="Abonnement maintenance" value={form.description} onChange={set('description')} />
+        <input style={inputStyle} value={form.description} onChange={set('description')} />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Montant HT (€) *">
-          <input style={inputStyle} type="number" placeholder="500" value={form.montantHT} onChange={set('montantHT')} />
+          <input style={inputStyle} type="number" value={form.montantHT} onChange={set('montantHT')} />
         </Field>
         <Field label="Taux TVA">
           <select style={inputStyle} value={form.tauxTVA} onChange={set('tauxTVA')}>
@@ -3238,8 +3158,8 @@ function ChorusStatus() {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', background: '#e0f2fe', borderRadius: 10 }}>
       <span style={{ fontSize: 20 }}>ℹ️</span>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#075985' }}>Processus Chorus prêt — connexion non établie</div>
-        <div style={{ fontSize: 12, color: '#0369a1' }}>Mode test local : aucune société réelle ni identifiants Chorus Pro vérifiés.</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#075985' }}>Mode test client - Chorus non connecte</div>
+        <div style={{ fontSize: 12, color: '#0369a1' }}>Configuration API a verifier sur Render. Aucune transmission reelle tant que Chorus ne confirme pas les identifiants.</div>
       </div>
     </div>
   );
@@ -3247,8 +3167,8 @@ function ChorusStatus() {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', background: '#fef3c7', borderRadius: 10 }}>
       <span style={{ fontSize: 20 }}>⚠️</span>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>Non configuré</div>
-        <div style={{ fontSize: 12, color: '#b45309' }}>Identifiants Chorus Pro à renseigner dans les paramètres Railway</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>Mode test client</div>
+        <div style={{ fontSize: 12, color: '#b45309' }}>Variables CHORUS_CLIENT_ID et CHORUS_CLIENT_SECRET a configurer sur Render.</div>
       </div>
     </div>
   );
@@ -3450,7 +3370,7 @@ function SectionCatalogue({ showModal, setShowModal }) {
   const [search, setSearch]     = useState('');
   const [pg, setPg]             = useState(1);
   const [editItem, setEditItem] = useState(null);
-  const [form, setForm]         = useState({ reference:'', nom:'', description:'', prix_ht:'', tva_taux:'20', unite:'unité', code_comptable:'' });
+  const [form, setForm]         = useState({ reference:'', nom:'', description:'', prix_ht:'', tva_taux:'20', unite:'', code_comptable:'' });
   const [importModal, setImportModal] = useState(false);
   const [csvText, setCsvText]   = useState('');
   const [importResult, setImportResult] = useState(null);
@@ -3470,12 +3390,12 @@ function SectionCatalogue({ showModal, setShowModal }) {
 
   const openCreate = () => {
     setEditItem(null);
-    setForm({ reference:'', nom:'', description:'', prix_ht:'', tva_taux:'20', unite:'unité', code_comptable:'' });
+    setForm({ reference:'', nom:'', description:'', prix_ht:'', tva_taux:'20', unite:'', code_comptable:'' });
     setShowModal(true);
   };
   const openEdit = (a) => {
     setEditItem(a);
-    setForm({ reference:a.reference||'', nom:a.nom||'', description:a.description||'', prix_ht:String(a.prix_ht||''), tva_taux:String(a.tva_taux||'20'), unite:a.unite||'unité', code_comptable:a.code_comptable||'' });
+    setForm({ reference:a.reference||'', nom:a.nom||'', description:a.description||'', prix_ht:String(a.prix_ht||''), tva_taux:String(a.tva_taux||'20'), unite:a.unite||'', code_comptable:a.code_comptable||'' });
     setShowModal(true);
   };
   const handleSave = async () => {
@@ -3507,7 +3427,7 @@ function SectionCatalogue({ showModal, setShowModal }) {
       {msg && <div style={{ background:msg.startsWith('✓')?'#d1fae5':'#fee2e2', color:msg.startsWith('✓')?'#065f46':'#991b1b', borderRadius:8, padding:'10px 16px', marginBottom:16, fontSize:13 }}>{msg}</div>}
 
       <div style={{ display:'flex', gap:12, marginBottom:20, alignItems:'center', flexWrap:'wrap' }}>
-        <input style={{ ...inputStyle, flex:1, minWidth:200, maxWidth:380 }} placeholder="Rechercher par nom, référence…" value={search}
+        <input style={{ ...inputStyle, flex:1, minWidth:200, maxWidth:380 }} value={search}
           onChange={(e) => { setSearch(e.target.value); setPg(1); load(e.target.value,1); }} />
         <Btn variant="ghost" onClick={() => setImportModal(true)}>⬆ Importer CSV</Btn>
         <Btn onClick={openCreate}>+ Nouvel article</Btn>
@@ -3567,13 +3487,13 @@ function SectionCatalogue({ showModal, setShowModal }) {
       {showModal && (
         <Modal title={editItem?'Modifier l\'article':'Nouvel article'} onClose={() => setShowModal(false)}>
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            <Field label="Nom *"><input style={inputStyle} value={form.nom} onChange={(e) => setForm({...form,nom:e.target.value})} placeholder="Conseil en stratégie" /></Field>
+            <Field label="Nom *"><input style={inputStyle} value={form.nom} onChange={(e) => setForm({...form,nom:e.target.value})} /></Field>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Référence"><input style={inputStyle} value={form.reference} onChange={(e) => setForm({...form,reference:e.target.value})} placeholder="REF-001" /></Field>
-              <Field label="Unité"><input style={inputStyle} value={form.unite} onChange={(e) => setForm({...form,unite:e.target.value})} placeholder="heure / unité / forfait" /></Field>
+              <Field label="Référence"><input style={inputStyle} value={form.reference} onChange={(e) => setForm({...form,reference:e.target.value})} /></Field>
+              <Field label="Unité"><input style={inputStyle} value={form.unite} onChange={(e) => setForm({...form,unite:e.target.value})} /></Field>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Prix HT (€) *"><input style={inputStyle} type="number" step="0.01" min="0" value={form.prix_ht} onChange={(e) => setForm({...form,prix_ht:e.target.value})} placeholder="150.00" /></Field>
+              <Field label="Prix HT (€) *"><input style={inputStyle} type="number" step="0.01" min="0" value={form.prix_ht} onChange={(e) => setForm({...form,prix_ht:e.target.value})} /></Field>
               <Field label="TVA (%)">
                 <select style={inputStyle} value={form.tva_taux} onChange={(e) => setForm({...form,tva_taux:e.target.value})}>
                   <option value="0">0 % (exonéré)</option><option value="2.1">2,1 %</option>
@@ -3581,8 +3501,8 @@ function SectionCatalogue({ showModal, setShowModal }) {
                 </select>
               </Field>
             </div>
-            <Field label="Description"><textarea style={{ ...inputStyle, resize:'vertical', minHeight:72 }} value={form.description} onChange={(e) => setForm({...form,description:e.target.value})} placeholder="Description optionnelle…" /></Field>
-            <Field label="Code comptable"><input style={inputStyle} value={form.code_comptable} onChange={(e) => setForm({...form,code_comptable:e.target.value})} placeholder="706100" /></Field>
+            <Field label="Description"><textarea style={{ ...inputStyle, resize:'vertical', minHeight:72 }} value={form.description} onChange={(e) => setForm({...form,description:e.target.value})} /></Field>
+            <Field label="Code comptable"><input style={inputStyle} value={form.code_comptable} onChange={(e) => setForm({...form,code_comptable:e.target.value})} /></Field>
             {msg && !msg.startsWith('✓') && <div style={{ color:'#dc2626', fontSize:13 }}>{msg}</div>}
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
               <Btn variant="ghost" onClick={() => setShowModal(false)}>Annuler</Btn>
@@ -3599,7 +3519,6 @@ function SectionCatalogue({ showModal, setShowModal }) {
             <code style={{ background:'#f1f5f9', padding:'2px 6px', borderRadius:4, fontSize:12 }}>reference;nom;description;prix_ht;tva_taux;unite;code_comptable</code>
           </div>
           <textarea style={{ ...inputStyle, minHeight:200, fontFamily:'monospace', fontSize:12, resize:'vertical' }}
-            placeholder={"REF001;Conseil horaire;;150.00;20;heure;706100\nREF002;Formation;;1200.00;20;jour;706200"}
             value={csvText} onChange={(e) => setCsvText(e.target.value)} />
           {importResult && (
             <div style={{ marginTop:12, padding:'10px 14px', borderRadius:8, background:importResult.ok?'#d1fae5':'#fee2e2', fontSize:13, color:importResult.ok?'#065f46':'#991b1b' }}>
@@ -3630,7 +3549,7 @@ function SectionDevis({ showModal, setShowModal, company }) {
   const [catalogue, setCatalogue] = useState([]);
   const [msg, setMsg]             = useState('');
   const EF = { client_nom:'', client_siret:'', client_email:'', objet:'', date_validite:'', notes:'' };
-  const EL = { description:'', quantite:'1', prix_unitaire_ht:'', tva_taux:'20', unite:'unité', catalogue_id:'' };
+  const EL = { description:'', quantite:'', prix_unitaire_ht:'', tva_taux:'20', unite:'', catalogue_id:'' };
   const [form, setForm]    = useState(EF);
   const [lignes, setLignes] = useState([{...EL}]);
   const LIMIT = 15;
@@ -3713,7 +3632,6 @@ function SectionDevis({ showModal, setShowModal, company }) {
         ))}
         <input
           style={{ ...inputStyle, width: 260 }}
-          placeholder="Rechercher client devis..."
           value={searchClient}
           onChange={(e) => setSearchClient(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { setPg(1); load(filtreStatut, 1, searchClient); } }}
@@ -3782,14 +3700,14 @@ function SectionDevis({ showModal, setShowModal, company }) {
         <Modal title="Nouveau devis" onClose={()=>setShowModal(false)}>
           <div style={{ display:'flex', flexDirection:'column', gap:12, maxHeight:'68vh', overflowY:'auto', paddingRight:4 }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Nom client *"><input style={inputStyle} value={form.client_nom} onChange={e=>setForm({...form,client_nom:e.target.value})} placeholder="Acme Corp" /></Field>
-              <Field label="SIRET client"><input style={inputStyle} value={form.client_siret} onChange={e=>setForm({...form,client_siret:e.target.value.replace(/\D/g,'').slice(0,14)})} placeholder="14 chiffres" /></Field>
+              <Field label="Nom client *"><input style={inputStyle} value={form.client_nom} onChange={e=>setForm({...form,client_nom:e.target.value})} /></Field>
+              <Field label="SIRET client"><input style={inputStyle} value={form.client_siret} onChange={e=>setForm({...form,client_siret:e.target.value.replace(/\D/g,'').slice(0,14)})} /></Field>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Email client"><input style={inputStyle} type="email" value={form.client_email} onChange={e=>setForm({...form,client_email:e.target.value})} placeholder="contact@client.fr" /></Field>
+              <Field label="Email client"><input style={inputStyle} type="email" value={form.client_email} onChange={e=>setForm({...form,client_email:e.target.value})} /></Field>
               <Field label="Valide jusqu'au"><input style={inputStyle} type="date" value={form.date_validite} onChange={e=>setForm({...form,date_validite:e.target.value})} /></Field>
             </div>
-            <Field label="Objet"><input style={inputStyle} value={form.objet} onChange={e=>setForm({...form,objet:e.target.value})} placeholder="Prestation de conseil Q3 2026" /></Field>
+            <Field label="Objet"><input style={inputStyle} value={form.objet} onChange={e=>setForm({...form,objet:e.target.value})} /></Field>
 
             <div>
               <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginBottom:8 }}>Lignes</div>
@@ -3801,14 +3719,14 @@ function SectionDevis({ showModal, setShowModal, company }) {
                       {catalogue.map(a=><option key={a.id} value={a.id}>{a.nom} — {a.prix_ht} €/{a.unite}</option>)}
                     </select>
                   )}
-                  <input style={{ ...inputStyle, marginBottom:6 }} placeholder="Description *" value={l.description} onChange={e=>updLigne(i,'description',e.target.value)} />
+                  <input style={{ ...inputStyle, marginBottom:6 }} value={l.description} onChange={e=>updLigne(i,'description',e.target.value)} />
                   <div style={{ display:'grid', gridTemplateColumns:'80px 130px 100px 80px auto', gap:6, alignItems:'center' }}>
-                    <input style={inputStyle} type="number" min="0.001" step="any" placeholder="Qté" value={l.quantite} onChange={e=>updLigne(i,'quantite',e.target.value)} />
-                    <input style={inputStyle} type="number" min="0" step="0.01" placeholder="Prix HT *" value={l.prix_unitaire_ht} onChange={e=>updLigne(i,'prix_unitaire_ht',e.target.value)} />
+                    <input style={inputStyle} type="number" min="0.001" step="any" value={l.quantite} onChange={e=>updLigne(i,'quantite',e.target.value)} />
+                    <input style={inputStyle} type="number" min="0" step="0.01" value={l.prix_unitaire_ht} onChange={e=>updLigne(i,'prix_unitaire_ht',e.target.value)} />
                     <select style={inputStyle} value={l.tva_taux} onChange={e=>updLigne(i,'tva_taux',e.target.value)}>
                       <option value="0">0 %</option><option value="5.5">5,5 %</option><option value="10">10 %</option><option value="20">20 %</option>
                     </select>
-                    <input style={inputStyle} placeholder="Unité" value={l.unite} onChange={e=>updLigne(i,'unite',e.target.value)} />
+                    <input style={inputStyle} value={l.unite} onChange={e=>updLigne(i,'unite',e.target.value)} />
                     {lignes.length>1&&<Btn variant="danger" style={{ padding:'6px 8px', fontSize:11 }} onClick={()=>remLigne(i)}>✕</Btn>}
                   </div>
                 </div>
@@ -3825,7 +3743,7 @@ function SectionDevis({ showModal, setShowModal, company }) {
               </div>
             </div>
 
-            <Field label="Notes"><textarea style={{ ...inputStyle, minHeight:56, resize:'vertical' }} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Conditions, délais…" /></Field>
+            <Field label="Notes"><textarea style={{ ...inputStyle, minHeight:56, resize:'vertical' }} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} /></Field>
             {msg&&!msg.startsWith('✓')&&<div style={{ color:'#dc2626', fontSize:13 }}>{msg}</div>}
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <Btn variant="ghost" onClick={()=>setShowModal(false)}>Annuler</Btn>
@@ -4409,3 +4327,8 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
