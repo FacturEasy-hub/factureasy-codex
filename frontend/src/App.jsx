@@ -2760,6 +2760,8 @@ function SectionParametres({ company }) {
     email:     company?.email     || '',
     telephone: company?.telephone || '',
     adresse:   company?.adresse   || '',
+    tva_regime: company?.tva_regime || 'reel_normal',
+    activite_type: company?.activite_type || 'services',
   });
   const [saved, setSaved] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -2781,6 +2783,8 @@ function SectionParametres({ company }) {
           email:     data.email     || '',
           telephone: data.telephone || '',
           adresse:   data.adresse   || '',
+          tva_regime: data.tva_regime || 'reel_normal',
+          activite_type: data.activite_type || 'services',
         });
       })
       .catch(() => {});
@@ -2822,10 +2826,18 @@ function SectionParametres({ company }) {
       // POST /entreprises fait un upsert (siret unique)
       await apiCall('/entreprises', {
         method: 'POST',
-        body: JSON.stringify({ siret: form.siret, nom: form.nom, email: form.email }),
+        body: JSON.stringify({
+          siret: form.siret,
+          nom: form.nom,
+          email: form.email,
+          telephone: form.telephone,
+          adresse: form.adresse,
+          tva_regime: form.tva_regime,
+          activite_type: form.activite_type,
+        }),
       });
     } catch {}
-    localStorage.setItem('fe_company', JSON.stringify({ siret: form.siret, nom: form.nom, email: form.email }));
+    localStorage.setItem('fe_company', JSON.stringify(form));
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -2873,6 +2885,25 @@ function SectionParametres({ company }) {
           <Field label="Adresse">
             <input style={inputStyle} value={form.adresse} onChange={set('adresse')} />
           </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Regime TVA">
+              <select style={inputStyle} value={form.tva_regime} onChange={set('tva_regime')}>
+                <option value="reel_normal">Reel normal</option>
+                <option value="reel_simplifie">Reel simplifie</option>
+                <option value="franchise">Franchise en base</option>
+                <option value="non_assujetti">Non assujetti</option>
+              </select>
+            </Field>
+            <Field label="Activite">
+              <select style={inputStyle} value={form.activite_type} onChange={set('activite_type')}>
+                <option value="services">Services</option>
+                <option value="commerce">Commerce</option>
+                <option value="btp_leger">BTP leger</option>
+                <option value="profession_liberale">Profession liberale</option>
+                <option value="autre">Autre</option>
+              </select>
+            </Field>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
             <Btn onClick={handleSave}>Sauvegarder</Btn>
             {saved && (

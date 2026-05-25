@@ -74,6 +74,11 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
       return { rows: row ? [publicEntreprise(row)] : [], rowCount: row ? 1 : 0 };
     }
 
+    if (/SELECT id, siret, nom, email, contact_telephone AS telephone, adresse, tva_regime, activite_type, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = \$1/i.test(s)) {
+      const row = state.entreprises.find((e) => e.siret === params[0]);
+      return { rows: row ? [publicEntreprise(row)] : [], rowCount: row ? 1 : 0 };
+    }
+
     if (/INSERT INTO auth_otps/i.test(s)) {
       const row = {
         id: state.nextOtpId++,
@@ -121,6 +126,9 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
         domaine: params[7] || null,
         kbis_url: params[8] || null,
         notes_admin: params[9] || null,
+        adresse: null,
+        tva_regime: 'reel_normal',
+        activite_type: 'services',
         trial_ends_at: null,
         stripe_customer_id: null,
         created_at: nowIso(),
@@ -167,6 +175,13 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
       if (!row) return empty();
       row.nom = params[1] || row.nom;
       row.email = params[2] || row.email;
+      if (/contact_telephone/i.test(s)) {
+        row.contact_telephone = params[3] || null;
+        row.telephone = params[3] || null;
+        row.adresse = params[4] || null;
+        row.tva_regime = params[5] || 'reel_normal';
+        row.activite_type = params[6] || 'services';
+      }
       row.updated_at = nowIso();
       return { rows: [publicEntreprise(row)], rowCount: 1 };
     }

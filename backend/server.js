@@ -46,6 +46,8 @@ const CHANNEL_BY_CLIENT_TYPE = {
   EXPORT: 'EXPORT_E_REPORTING',
   B2B_FR: 'B2B_FR_E_INVOICING',
 };
+const TVA_REGIMES = new Set(['franchise', 'reel_simplifie', 'reel_normal', 'non_assujetti']);
+const ACTIVITY_TYPES = new Set(['services', 'commerce', 'btp_leger', 'profession_liberale', 'autre']);
 
 function normalizeClientType(value) {
   const type = String(value || 'B2B_FR').toUpperCase();
@@ -54,6 +56,11 @@ function normalizeClientType(value) {
 
 function channelForClientType(type) {
   return CHANNEL_BY_CLIENT_TYPE[normalizeClientType(type)] || 'B2B_FR_E_INVOICING';
+}
+
+function normalizeFromSet(value, allowed, fallback) {
+  const clean = String(value || fallback).toLowerCase();
+  return allowed.has(clean) ? clean : fallback;
 }
 
 // ─── Numérotation séquentielle des factures ──────────────────────────────────
@@ -178,6 +185,9 @@ app.get('/init-db', requireAdmin, async (req, res) => {
         trial_ends_at          TIMESTAMPTZ,
         contact_nom            VARCHAR(255),
         contact_telephone      VARCHAR(50),
+        adresse                TEXT,
+        tva_regime             VARCHAR(50) DEFAULT 'reel_normal',
+        activite_type          VARCHAR(50) DEFAULT 'services',
         domaine                VARCHAR(255),
         kbis_url               TEXT,
         notes_admin            TEXT,
@@ -194,6 +204,9 @@ app.get('/init-db', requireAdmin, async (req, res) => {
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS trial_ends_at          TIMESTAMPTZ;
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS contact_nom            VARCHAR(255);
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS contact_telephone      VARCHAR(50);
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS adresse                TEXT;
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS tva_regime             VARCHAR(50) DEFAULT 'reel_normal';
+        ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS activite_type          VARCHAR(50) DEFAULT 'services';
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS domaine                VARCHAR(255);
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS kbis_url               TEXT;
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS notes_admin            TEXT;
@@ -468,7 +481,7 @@ app.post('/auth/verify-otp', async (req, res) => {
 app.get('/auth/me', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at
+      `SELECT id, siret, nom, email, contact_telephone AS telephone, adresse, tva_regime, activite_type, plan, trial_ends_at, stripe_customer_id, created_at
        FROM entreprises WHERE siret = $1`,
       [req.user.siret]
     );
@@ -490,11 +503,17 @@ app.post('/entreprises', authenticate, async (req, res) => {
     if (req.user.role !== 'admin' && siret !== req.user.siret) return res.status(403).json({ error: 'Accès interdit à cette entreprise' });
     if (!validateSiret(siret) || !nom) return res.status(400).json({ error: 'SIRET et nom valides requis' });
     if (email && !validateEmail(email)) return res.status(400).json({ error: 'Email invalide' });
+    const telephone = sanitizeText(req.body.telephone || '', 50);
+    const adresse = sanitizeText(req.body.adresse || '', 1000);
+    const tvaRegime = normalizeFromSet(req.body.tva_regime, TVA_REGIMES, 'reel_normal');
+    const activiteType = normalizeFromSet(req.body.activite_type, ACTIVITY_TYPES, 'services');
     const { rows } = await pool.query(
-      `UPDATE entreprises SET nom=$2, email=COALESCE($3, email), updated_at=NOW()
+      `UPDATE entreprises
+       SET nom=$2, email=COALESCE($3, email), contact_telephone=$4, adresse=$5,
+           tva_regime=$6, activite_type=$7, updated_at=NOW()
        WHERE siret=$1
-       RETURNING id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at`,
-      [siret, nom, email || null]
+       RETURNING id, siret, nom, email, contact_telephone AS telephone, adresse, tva_regime, activite_type, plan, trial_ends_at, stripe_customer_id, created_at`,
+      [siret, nom, email || null, telephone || null, adresse || null, tvaRegime, activiteType]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
     res.json(rows[0]);
@@ -511,7 +530,7 @@ app.get('/entreprises/:siret', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Accès interdit à cette entreprise' });
     }
     const { rows } = await pool.query(
-      'SELECT id, siret, nom, email, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = $1',
+      'SELECT id, siret, nom, email, contact_telephone AS telephone, adresse, tva_regime, activite_type, plan, trial_ends_at, stripe_customer_id, created_at FROM entreprises WHERE siret = $1',
       [req.params.siret]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
