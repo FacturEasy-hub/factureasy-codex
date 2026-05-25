@@ -1469,6 +1469,7 @@ function SectionClients({ showModal, setShowModal }) {
   const [clients, setClients] = useState([]);
   const [form, setForm] = useState({ nom: '', siret_client: '', email: '', telephone: '', adresse: '' });
   const [msg, setMsg] = useState('');
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -1494,9 +1495,23 @@ function SectionClients({ showModal, setShowModal }) {
       setMsg(e.message);
     }
   };
+  const filteredClients = clients.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [c.nom, c.siret_client, c.email, c.telephone].some((v) => String(v || '').toLowerCase().includes(q));
+  });
 
   return (
     <div className="fade-in" style={{ padding: '28px 32px' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          style={{ ...inputStyle, maxWidth: 420 }}
+          placeholder="Rechercher client, SIRET, email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <span style={{ fontSize: 13, color: '#64748b' }}>{filteredClients.length}/{clients.length} client(s)</span>
+      </div>
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
         <table>
           <thead style={{ background: '#f8fafc' }}>
@@ -1509,9 +1524,9 @@ function SectionClients({ showModal, setShowModal }) {
             </tr>
           </thead>
           <tbody>
-            {clients.length === 0 ? (
+            {filteredClients.length === 0 ? (
               <tr><td colSpan="5" style={{ padding: 28, color: '#64748b', textAlign: 'center' }}>Aucun client. Cliquez sur + Nouveau client.</td></tr>
-            ) : clients.map((c) => (
+            ) : filteredClients.map((c) => (
               <tr key={c.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                 <td style={{ padding: '12px 16px', fontWeight: 700 }}>{c.nom}</td>
                 <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12 }}>{c.siret_client || '-'}</td>
@@ -1544,11 +1559,17 @@ function SectionClients({ showModal, setShowModal }) {
 
 function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
   const [tab, setTab] = useState('TOUTES');
+  const [search, setSearch] = useState('');
   const [avoirFacture, setAvoirFacture] = useState(null);
   const [relanceFacture, setRelanceFacture] = useState(null);
   const [clients, setClients] = useState([]);
-  const tabs = ['TOUTES', 'BROUILLON', 'EMISE', 'EN_COURS', 'ACCEPTEE', 'REJETEE'];
-  const filtered = tab === 'TOUTES' ? factures : factures.filter((f) => f.statut === tab);
+  const tabs = ['TOUTES', 'BROUILLON', 'EMISE', 'EN_COURS', 'ACCEPTEE', 'PAYEE', 'REJETEE', 'ANNULEE'];
+  const filtered = factures.filter((f) => {
+    const byStatus = tab === 'TOUTES' || f.statut === tab;
+    const q = search.trim().toLowerCase();
+    const bySearch = !q || [f.numero, f.client, f.siretClient, f.description].some((v) => String(v || '').toLowerCase().includes(q));
+    return byStatus && bySearch;
+  });
 
   const loadClients = useCallback(async () => {
     try {
@@ -1627,37 +1648,45 @@ function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
         />
       )}
       {/* Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 4,
-          marginBottom: 20,
-          background: '#f1f5f9',
-          borderRadius: 10,
-          padding: 4,
-          width: 'fit-content',
-        }}
-      >
-        {tabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              padding: '7px 16px',
-              borderRadius: 8,
-              border: 'none',
-              fontSize: 13,
-              fontWeight: tab === t ? 700 : 400,
-              background: tab === t ? '#fff' : 'transparent',
-              color: tab === t ? '#4f46e5' : '#64748b',
-              cursor: 'pointer',
-              boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s',
-            }}
-          >
-            {t === 'TOUTES' ? 'Toutes' : <Badge statut={t} />}
-          </button>
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 4,
+            background: '#f1f5f9',
+            borderRadius: 10,
+            padding: 4,
+            width: 'fit-content',
+            flexWrap: 'wrap',
+          }}
+        >
+          {tabs.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: 'none',
+                fontSize: 13,
+                fontWeight: tab === t ? 700 : 400,
+                background: tab === t ? '#fff' : 'transparent',
+                color: tab === t ? '#4f46e5' : '#64748b',
+                cursor: 'pointer',
+                boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              {t === 'TOUTES' ? 'Toutes' : <Badge statut={t} />}
+            </button>
+          ))}
+        </div>
+        <input
+          style={{ ...inputStyle, width: 320, maxWidth: '100%' }}
+          placeholder="Rechercher numéro, client, SIRET..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
       <div
         style={{
@@ -3484,6 +3513,7 @@ function SectionDevis({ showModal, setShowModal, company }) {
   const [loading, setLoading]     = useState(true);
   const [pg, setPg]               = useState(1);
   const [filtreStatut, setFiltreStatut] = useState('');
+  const [searchClient, setSearchClient] = useState('');
   const [detail, setDetail]       = useState(null);
   const [catalogue, setCatalogue] = useState([]);
   const [msg, setMsg]             = useState('');
@@ -3495,15 +3525,15 @@ function SectionDevis({ showModal, setShowModal, company }) {
   const fmtE = (n) => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2})+' €';
   const SC = { BROUILLON:{bg:'#f1f5f9',color:'#475569'}, ENVOYE:{bg:'#dbeafe',color:'#1d4ed8'}, ACCEPTE:{bg:'#d1fae5',color:'#065f46'}, REFUSE:{bg:'#fee2e2',color:'#991b1b'}, FACTURE:{bg:'#ede9fe',color:'#5b21b6'}, EXPIRE:{bg:'#fef3c7',color:'#92400e'} };
 
-  const load = useCallback(async (statut=filtreStatut, p=pg) => {
+  const load = useCallback(async (statut=filtreStatut, p=pg, client=searchClient) => {
     setLoading(true);
     try {
-      const qs = new URLSearchParams({ page:p, limit:LIMIT, ...(statut?{statut}:{}) });
+      const qs = new URLSearchParams({ page:p, limit:LIMIT, ...(statut?{statut}:{}), ...(client?{client}:{}) });
       const r = await apiCall(`/devis?${qs}`);
       if (r.ok) { const d=await r.json(); setDevisList(d.data||[]); setTotal(d.total||0); }
     } catch {}
     setLoading(false);
-  }, [filtreStatut, pg]);
+  }, [filtreStatut, pg, searchClient]);
 
   useEffect(() => {
     load();
@@ -3563,12 +3593,20 @@ function SectionDevis({ showModal, setShowModal, company }) {
       {/* Filtres */}
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap', alignItems:'center' }}>
         {['','BROUILLON','ENVOYE','ACCEPTE','REFUSE','FACTURE','EXPIRE'].map(s=>(
-          <button key={s||'all'} onClick={()=>{ setFiltreStatut(s); setPg(1); load(s,1); }}
+          <button key={s||'all'} onClick={()=>{ setFiltreStatut(s); setPg(1); load(s,1,searchClient); }}
             style={{ padding:'6px 14px', borderRadius:20, border:'1.5px solid', fontSize:12, fontWeight:600, cursor:'pointer',
               borderColor:filtreStatut===s?'#4f46e5':'#e2e8f0', background:filtreStatut===s?'#4f46e5':'#fff', color:filtreStatut===s?'#fff':'#64748b' }}>
             {s||'Tous'}
           </button>
         ))}
+        <input
+          style={{ ...inputStyle, width: 260 }}
+          placeholder="Rechercher client devis..."
+          value={searchClient}
+          onChange={(e) => setSearchClient(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { setPg(1); load(filtreStatut, 1, searchClient); } }}
+        />
+        <Btn variant="ghost" onClick={() => { setPg(1); load(filtreStatut, 1, searchClient); }}>Rechercher</Btn>
         <div style={{ flex:1 }}/>
         <Btn onClick={()=>{ setForm(EF); setLignes([{...EL}]); setShowModal(true); }}>+ Nouveau devis</Btn>
       </div>
@@ -3619,9 +3657,9 @@ function SectionDevis({ showModal, setShowModal, company }) {
           </table>
           {total>LIMIT&&(
             <div style={{ padding:'12px 16px', display:'flex', gap:8, alignItems:'center', borderTop:'1px solid #e2e8f0' }}>
-              <Btn variant="ghost" style={{ padding:'5px 12px' }} disabled={pg===1} onClick={()=>{ const p=pg-1; setPg(p); load(filtreStatut,p); }}>←</Btn>
+              <Btn variant="ghost" style={{ padding:'5px 12px' }} disabled={pg===1} onClick={()=>{ const p=pg-1; setPg(p); load(filtreStatut,p,searchClient); }}>←</Btn>
               <span style={{ fontSize:13, color:'#64748b' }}>Page {pg} / {Math.ceil(total/LIMIT)}</span>
-              <Btn variant="ghost" style={{ padding:'5px 12px' }} disabled={pg>=Math.ceil(total/LIMIT)} onClick={()=>{ const p=pg+1; setPg(p); load(filtreStatut,p); }}>→</Btn>
+              <Btn variant="ghost" style={{ padding:'5px 12px' }} disabled={pg>=Math.ceil(total/LIMIT)} onClick={()=>{ const p=pg+1; setPg(p); load(filtreStatut,p,searchClient); }}>→</Btn>
             </div>
           )}
         </div>
