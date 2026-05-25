@@ -1105,6 +1105,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
     clientEmail: '',
     clientTelephone: '',
     clientAdresse: '',
+    clientType: 'B2B_FR',
     description: '',
     montantHT: '',
     tauxTVA: 20,
@@ -1130,6 +1131,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
       clientEmail: c.email || '',
       clientTelephone: c.telephone || '',
       clientAdresse: c.adresse || '',
+      clientType: c.client_type || 'B2B_FR',
     }));
   }, [clients, hasClients, form.selectedClientId, form.clientMode]);
 
@@ -1144,6 +1146,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
       clientEmail: c.email || '',
       clientTelephone: c.telephone || '',
       clientAdresse: c.adresse || '',
+      clientType: c.client_type || 'B2B_FR',
     }));
     setSireneHint('');
   };
@@ -1185,6 +1188,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
       client_email: form.clientEmail,
       client_telephone: form.clientTelephone,
       client_adresse: form.clientAdresse,
+      client_type: form.clientType,
       montantHT,
       tvaMontant: tva,
       ttc,
@@ -1210,6 +1214,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
                 clientEmail: '',
                 clientTelephone: '',
                 clientAdresse: '',
+                clientType: 'B2B_FR',
               }));
               setSireneHint('');
               return;
@@ -1219,7 +1224,7 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
           }}
         >
           {hasClients ? clients.map((c) => (
-            <option key={c.id} value={c.id}>{c.nom}{c.siret_client ? ` - ${c.siret_client}` : ''}</option>
+            <option key={c.id} value={c.id}>{c.nom}{c.siret_client ? ` - ${c.siret_client}` : ''}{c.client_type === 'B2G_PUBLIC' ? ' - Chorus Pro' : ''}</option>
           )) : <option value="__new__">Aucun client enregistré</option>}
           <option value="__new__">+ Nouveau client</option>
         </select>
@@ -1252,6 +1257,21 @@ function ModalNouvelleFacture({ onClose, onSave, clients = [] }) {
       <Field label="Nom client *">
         <input style={inputStyle} placeholder="Acme Corp" value={form.client} onChange={(e) => setForm((f) => ({ ...f, client: e.target.value, clientMode: 'new', selectedClientId: '' }))} />
       </Field>
+      {form.clientMode === 'new' && (
+        <Field label="Canal reglementaire">
+          <select style={inputStyle} value={form.clientType} onChange={set('clientType')}>
+            <option value="B2B_FR">Entreprise privee francaise</option>
+            <option value="B2G_PUBLIC">Secteur public / Chorus Pro</option>
+            <option value="B2C">Particulier / B2C</option>
+            <option value="EXPORT">Export</option>
+          </select>
+        </Field>
+      )}
+      {form.clientMode === 'existing' && form.clientType === 'B2G_PUBLIC' && (
+        <div style={{ padding: 10, marginBottom: 12, borderRadius: 8, background: '#e0f2fe', color: '#075985', fontSize: 13 }}>
+          Client marque Chorus Pro. Envoi reel seulement si API Chorus configuree.
+        </div>
+      )}
       {form.clientMode === 'new' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Email client">
@@ -1467,9 +1487,24 @@ function ModalRelance({ facture, onClose }) {
 
 function SectionClients({ showModal, setShowModal }) {
   const [clients, setClients] = useState([]);
-  const [form, setForm] = useState({ nom: '', siret_client: '', email: '', telephone: '', adresse: '' });
+  const [form, setForm] = useState({
+    nom: '',
+    siret_client: '',
+    email: '',
+    telephone: '',
+    adresse: '',
+    client_type: 'B2B_FR',
+    chorus_service_code: '',
+    chorus_engagement_required: false,
+  });
   const [msg, setMsg] = useState('');
   const [search, setSearch] = useState('');
+  const clientTypeLabel = (type) => ({
+    B2G_PUBLIC: 'Chorus Pro public',
+    B2C: 'B2C e-reporting',
+    EXPORT: 'Export e-reporting',
+    B2B_FR: 'B2B France',
+  }[type] || 'B2B France');
 
   const load = useCallback(async () => {
     try {
@@ -1489,8 +1524,29 @@ function SectionClients({ showModal, setShowModal }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       setClients((rows) => [...rows, data].sort((a, b) => a.nom.localeCompare(b.nom)));
-      setForm({ nom: '', siret_client: '', email: '', telephone: '', adresse: '' });
+      setForm({ nom: '', siret_client: '', email: '', telephone: '', adresse: '', client_type: 'B2B_FR', chorus_service_code: '', chorus_engagement_required: false });
       setShowModal(false);
+    } catch (e) {
+      setMsg(e.message);
+    }
+  };
+  const updateClientChannel = async (client, clientType) => {
+    setMsg('');
+    try {
+      const res = await apiCall(`/clients/${client.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          client_type: clientType,
+          chorus_service_code: client.chorus_service_code || '',
+          chorus_engagement_required: Boolean(client.chorus_engagement_required),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      setClients((rows) => rows.map((row) => row.id === data.id ? data : row));
+      setMsg(clientType === 'B2G_PUBLIC'
+        ? 'Client marque Chorus Pro. Connexion reelle seulement si API Chorus configuree.'
+        : 'Client repasse en B2B France.');
     } catch (e) {
       setMsg(e.message);
     }
@@ -1498,7 +1554,7 @@ function SectionClients({ showModal, setShowModal }) {
   const filteredClients = clients.filter((c) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return [c.nom, c.siret_client, c.email, c.telephone].some((v) => String(v || '').toLowerCase().includes(q));
+    return [c.nom, c.siret_client, c.email, c.telephone, clientTypeLabel(c.client_type)].some((v) => String(v || '').toLowerCase().includes(q));
   });
 
   return (
@@ -1512,6 +1568,7 @@ function SectionClients({ showModal, setShowModal }) {
         />
         <span style={{ fontSize: 13, color: '#64748b' }}>{filteredClients.length}/{clients.length} client(s)</span>
       </div>
+      {msg && <div style={{ color: '#075985', background: '#e0f2fe', padding: 10, borderRadius: 8, marginBottom: 12 }}>{msg}</div>}
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
         <table>
           <thead style={{ background: '#f8fafc' }}>
@@ -1520,19 +1577,25 @@ function SectionClients({ showModal, setShowModal }) {
               <th style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>SIRET</th>
               <th style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>Email</th>
               <th style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>Telephone</th>
-              <th style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>Adresse</th>
+              <th style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>Canal</th>
+              <th style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {filteredClients.length === 0 ? (
-              <tr><td colSpan="5" style={{ padding: 28, color: '#64748b', textAlign: 'center' }}>Aucun client. Cliquez sur + Nouveau client.</td></tr>
+              <tr><td colSpan="6" style={{ padding: 28, color: '#64748b', textAlign: 'center' }}>Aucun client. Cliquez sur + Nouveau client.</td></tr>
             ) : filteredClients.map((c) => (
               <tr key={c.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                 <td style={{ padding: '12px 16px', fontWeight: 700 }}>{c.nom}</td>
                 <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12 }}>{c.siret_client || '-'}</td>
                 <td style={{ padding: '12px 16px' }}>{c.email || '-'}</td>
                 <td style={{ padding: '12px 16px' }}>{c.telephone || '-'}</td>
-                <td style={{ padding: '12px 16px', color: '#64748b' }}>{c.adresse || '-'}</td>
+                <td style={{ padding: '12px 16px', color: c.client_type === 'B2G_PUBLIC' ? '#075985' : '#64748b', fontWeight: 700 }}>{clientTypeLabel(c.client_type)}</td>
+                <td style={{ padding: '12px 16px' }}>
+                  <Btn variant="ghost" onClick={() => updateClientChannel(c, c.client_type === 'B2G_PUBLIC' ? 'B2B_FR' : 'B2G_PUBLIC')}>
+                    {c.client_type === 'B2G_PUBLIC' ? 'Retirer Chorus' : 'Marquer Chorus'}
+                  </Btn>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1544,6 +1607,23 @@ function SectionClients({ showModal, setShowModal }) {
           {msg && <div style={{ color: '#991b1b', background: '#fee2e2', padding: 10, borderRadius: 8, marginBottom: 12 }}>{msg}</div>}
           <Field label="Nom client *"><input style={inputStyle} value={form.nom} onChange={set('nom')} placeholder="Acme Corp" /></Field>
           <Field label="SIRET client"><input style={inputStyle} value={form.siret_client} onChange={(e) => setForm({ ...form, siret_client: e.target.value.replace(/\D/g, '').slice(0, 14) })} placeholder="14 chiffres" /></Field>
+          <Field label="Canal reglementaire">
+            <select style={inputStyle} value={form.client_type} onChange={set('client_type')}>
+              <option value="B2B_FR">Entreprise privee francaise</option>
+              <option value="B2G_PUBLIC">Secteur public / Chorus Pro</option>
+              <option value="B2C">Particulier / B2C</option>
+              <option value="EXPORT">Export</option>
+            </select>
+          </Field>
+          {form.client_type === 'B2G_PUBLIC' && (
+            <>
+              <Field label="Code service Chorus (optionnel)"><input style={inputStyle} value={form.chorus_service_code} onChange={set('chorus_service_code')} placeholder="Ex: FACTURES" /></Field>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 12 }}>
+                <input type="checkbox" checked={form.chorus_engagement_required} onChange={(e) => setForm({ ...form, chorus_engagement_required: e.target.checked })} />
+                Numero engagement requis
+              </label>
+            </>
+          )}
           <Field label="Email"><input style={inputStyle} type="email" value={form.email} onChange={set('email')} placeholder="contact@client.fr" /></Field>
           <Field label="Telephone"><input style={inputStyle} value={form.telephone} onChange={set('telephone')} placeholder="01 23 45 67 89" /></Field>
           <Field label="Adresse"><textarea style={{ ...inputStyle, minHeight: 72 }} value={form.adresse} onChange={set('adresse')} /></Field>
@@ -1607,6 +1687,7 @@ function SectionFactures({ factures, setFactures, showModal, setShowModal }) {
               email: form.client_email,
               telephone: form.client_telephone,
               adresse: form.client_adresse,
+              client_type: form.client_type,
             }),
           });
           if (clientRes.ok) {

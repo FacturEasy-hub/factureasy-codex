@@ -39,6 +39,23 @@ const {
   safeError,
 } = require('./utils/security');
 
+const CLIENT_TYPES = new Set(['B2B_FR', 'B2G_PUBLIC', 'B2C', 'EXPORT']);
+const CHANNEL_BY_CLIENT_TYPE = {
+  B2G_PUBLIC: 'B2G_CHORUS_PRO',
+  B2C: 'B2C_E_REPORTING',
+  EXPORT: 'EXPORT_E_REPORTING',
+  B2B_FR: 'B2B_FR_E_INVOICING',
+};
+
+function normalizeClientType(value) {
+  const type = String(value || 'B2B_FR').toUpperCase();
+  return CLIENT_TYPES.has(type) ? type : 'B2B_FR';
+}
+
+function channelForClientType(type) {
+  return CHANNEL_BY_CLIENT_TYPE[normalizeClientType(type)] || 'B2B_FR_E_INVOICING';
+}
+
 // ─── Numérotation séquentielle des factures ──────────────────────────────────
 // Garantit une séquence chronologique sans rupture par SIRET (obligation légale)
 async function nextNumeroFacture(siret) {
@@ -239,10 +256,18 @@ app.get('/init-db', requireAdmin, async (req, res) => {
         email         VARCHAR(255),
         telephone     VARCHAR(50),
         adresse       TEXT,
+        client_type   VARCHAR(30) DEFAULT 'B2B_FR',
+        regulatory_channel VARCHAR(40) DEFAULT 'B2B_FR_E_INVOICING',
+        chorus_service_code VARCHAR(100),
+        chorus_engagement_required BOOLEAN DEFAULT FALSE,
         created_at    TIMESTAMPTZ DEFAULT NOW(),
         updated_at    TIMESTAMPTZ DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_clients_siret ON clients(siret);
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS client_type VARCHAR(30) DEFAULT 'B2B_FR';
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS regulatory_channel VARCHAR(40) DEFAULT 'B2B_FR_E_INVOICING';
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS chorus_service_code VARCHAR(100);
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS chorus_engagement_required BOOLEAN DEFAULT FALSE;
 
       -- ── Catalogue produits/services ────────────────────────────────────────
       CREATE TABLE IF NOT EXISTS catalogue (
@@ -502,7 +527,7 @@ app.get('/entreprises/:siret', authenticate, async (req, res) => {
 app.get('/clients', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, nom, siret_client, email, telephone, adresse, created_at, updated_at
+      `SELECT id, nom, siret_client, email, telephone, adresse, client_type, regulatory_channel, chorus_service_code, chorus_engagement_required, created_at, updated_at
        FROM clients WHERE siret = $1 ORDER BY nom ASC`,
       [req.user.siret]
     );
@@ -520,21 +545,48 @@ app.post('/clients', authenticate, async (req, res) => {
     const email = normalizeEmail(req.body.email || '');
     const telephone = sanitizeText(req.body.telephone || '', 50);
     const adresse = sanitizeText(req.body.adresse || '', 1000);
+    const clientType = normalizeClientType(req.body.client_type);
+    const regulatoryChannel = channelForClientType(clientType);
+    const chorusServiceCode = sanitizeText(req.body.chorus_service_code || '', 100);
+    const chorusEngagementRequired = Boolean(req.body.chorus_engagement_required);
 
     if (!nom) return res.status(400).json({ error: 'Nom client requis' });
     if (siretClient && !validateSiret(siretClient)) return res.status(400).json({ error: 'SIRET client invalide' });
     if (email && !validateEmail(email)) return res.status(400).json({ error: 'Email client invalide' });
 
     const { rows } = await pool.query(
-      `INSERT INTO clients (siret, nom, siret_client, email, telephone, adresse)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, nom, siret_client, email, telephone, adresse, created_at, updated_at`,
-      [req.user.siret, nom, siretClient || null, email || null, telephone || null, adresse || null]
+      `INSERT INTO clients (siret, nom, siret_client, email, telephone, adresse, client_type, regulatory_channel, chorus_service_code, chorus_engagement_required)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id, nom, siret_client, email, telephone, adresse, client_type, regulatory_channel, chorus_service_code, chorus_engagement_required, created_at, updated_at`,
+      [req.user.siret, nom, siretClient || null, email || null, telephone || null, adresse || null, clientType, regulatoryChannel, chorusServiceCode || null, chorusEngagementRequired]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
     const safe = safeError(err);
     console.error('[POST /clients]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
+
+app.put('/clients/:id(\\d+)', authenticate, async (req, res) => {
+  try {
+    const clientType = normalizeClientType(req.body.client_type);
+    const regulatoryChannel = channelForClientType(clientType);
+    const chorusServiceCode = sanitizeText(req.body.chorus_service_code || '', 100);
+    const chorusEngagementRequired = Boolean(req.body.chorus_engagement_required);
+    const { rows } = await pool.query(
+      `UPDATE clients
+       SET client_type = $1, regulatory_channel = $2, chorus_service_code = $3,
+           chorus_engagement_required = $4, updated_at = NOW()
+       WHERE id = $5 AND siret = $6
+       RETURNING id, nom, siret_client, email, telephone, adresse, client_type, regulatory_channel, chorus_service_code, chorus_engagement_required, created_at, updated_at`,
+      [clientType, regulatoryChannel, chorusServiceCode || null, chorusEngagementRequired, req.params.id, req.user.siret]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Client introuvable' });
+    res.json(rows[0]);
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[PUT /clients/:id]', err.message);
     res.status(safe.status).json({ error: safe.message });
   }
 });
@@ -575,10 +627,16 @@ app.get('/factures/:id(\\d+)', authenticate, async (req, res) => {
   }
 });
 
-function regulatoryChannelForInvoice(clientSiret) {
+async function regulatoryChannelForInvoice(emetteurSiret, clientSiret, clientNom) {
   if (!clientSiret) return 'B2C_E_REPORTING';
-  // Heuristic MVP: public sector SIRET and B2G detection need a real referential later.
-  return 'B2B_FR_E_INVOICING';
+  const { rows } = await pool.query(
+    `SELECT regulatory_channel FROM clients
+     WHERE siret = $1 AND (siret_client = $2 OR LOWER(nom) = LOWER($3))
+     ORDER BY CASE WHEN siret_client = $2 THEN 0 ELSE 1 END
+     LIMIT 1`,
+    [emetteurSiret, clientSiret, clientNom || '']
+  );
+  return rows[0]?.regulatory_channel || 'B2B_FR_E_INVOICING';
 }
 
 app.post('/factures', authenticate, async (req, res) => {
@@ -599,9 +657,10 @@ app.post('/factures', authenticate, async (req, res) => {
     const montant_tva = parseFloat((montant_ht * tva / 100).toFixed(2));
     const numero      = await nextNumeroFacture(emetteur_siret);
     const date_emission = new Date().toISOString().split('T')[0];
+    const regulatoryChannel = await regulatoryChannelForInvoice(emetteur_siret, client_siret, client_nom);
 
-    // Si pas de credentials Chorus Pro -> facture preparee localement, pas de fausse connexion.
-    if (!process.env.CHORUS_CLIENT_ID) {
+    // Si pas de credentials Chorus Pro, ou client non public -> facture preparee localement.
+    if (!process.env.CHORUS_CLIENT_ID || regulatoryChannel !== 'B2G_CHORUS_PRO') {
       const { rows } = await pool.query(
         `INSERT INTO factures
           (numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, statut, chorus_id)
@@ -611,7 +670,7 @@ app.post('/factures', authenticate, async (req, res) => {
       await pool.query(
         `INSERT INTO regulatory_events (siret, invoice_id, channel, status, payload_json)
          VALUES ($1,$2,$3,'PREPARED',$4)`,
-        [emetteur_siret, rows[0].id, regulatoryChannelForInvoice(client_siret), { client_siret, montant_ht, tva }]
+        [emetteur_siret, rows[0].id, regulatoryChannel, { client_siret, montant_ht, tva }]
       ).catch(() => {});
       return res.status(201).json(rows[0]);
     }

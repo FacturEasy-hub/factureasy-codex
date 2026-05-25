@@ -189,12 +189,20 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
       return { rows: [], rowCount: before - state.entreprises.length };
     }
 
-    if (/SELECT id, nom, siret_client, email, telephone, adresse, created_at, updated_at FROM clients WHERE siret = \$1/i.test(s)) {
+    if (/SELECT id, nom, siret_client, email, telephone, adresse, client_type, regulatory_channel, chorus_service_code, chorus_engagement_required, created_at, updated_at FROM clients WHERE siret = \$1/i.test(s)) {
       const rows = state.clients
         .filter((c) => c.siret === params[0])
         .sort((a, b) => String(a.nom).localeCompare(String(b.nom)))
         .map(({ siret, ...rest }) => rest);
       return { rows, rowCount: rows.length };
+    }
+
+    if (/SELECT regulatory_channel FROM clients/i.test(s)) {
+      const row = state.clients.find((c) =>
+        c.siret === params[0]
+        && (c.siret_client === params[1] || String(c.nom || '').toLowerCase() === String(params[2] || '').toLowerCase())
+      );
+      return { rows: row ? [{ regulatory_channel: row.regulatory_channel || 'B2B_FR_E_INVOICING' }] : [], rowCount: row ? 1 : 0 };
     }
 
     if (/INSERT INTO clients/i.test(s)) {
@@ -206,10 +214,26 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
         email: params[3] || null,
         telephone: params[4] || null,
         adresse: params[5] || null,
+        client_type: params[6] || 'B2B_FR',
+        regulatory_channel: params[7] || 'B2B_FR_E_INVOICING',
+        chorus_service_code: params[8] || null,
+        chorus_engagement_required: Boolean(params[9]),
         created_at: nowIso(),
         updated_at: nowIso(),
       };
       state.clients.push(row);
+      const { siret, ...publicRow } = row;
+      return { rows: [publicRow], rowCount: 1 };
+    }
+
+    if (/UPDATE clients\s+SET client_type = \$1/i.test(s)) {
+      const row = state.clients.find((c) => c.id === Number(params[4]) && c.siret === params[5]);
+      if (!row) return { rows: [], rowCount: 0 };
+      row.client_type = params[0] || 'B2B_FR';
+      row.regulatory_channel = params[1] || 'B2B_FR_E_INVOICING';
+      row.chorus_service_code = params[2] || null;
+      row.chorus_engagement_required = Boolean(params[3]);
+      row.updated_at = nowIso();
       const { siret, ...publicRow } = row;
       return { rows: [publicRow], rowCount: 1 };
     }
