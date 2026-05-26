@@ -5,6 +5,7 @@
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'factureasy-test-secret';
+process.env.CHORUS_MOCK = 'true';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');
@@ -31,6 +32,8 @@ const mockFactures = [];
 const mockEntreprises = [];
 const mockOtps = [];
 const mockRegulatoryEvents = [];
+const mockChorusTransmissions = [];
+const mockChorusRecipientCache = [];
 
 const mockQuery = jest.fn(async function(sql, params) {
   params = params || [];
@@ -73,7 +76,9 @@ const mockQuery = jest.fn(async function(sql, params) {
     return { rows: rows };
   }
   if (/SELECT \* FROM factures WHERE id/.test(s)) {
-    return { rows: mockFactures.filter(function(f) { return f.id === parseInt(params[0]); }) };
+    var rowsById = mockFactures.filter(function(f) { return f.id === parseInt(params[0]); });
+    if (/emetteur_siret/.test(s)) rowsById = rowsById.filter(function(f) { return f.emetteur_siret === params[1]; });
+    return { rows: rowsById };
   }
   if (/SELECT numero, date_emission, client_nom, client_siret, montant_ht, tva, montant_ttc, statut, type_document FROM factures/.test(s)) {
     return { rows: mockFactures.filter(function(f) { return f.emetteur_siret === params[0]; }).map(function(f) { return Object.assign({ type_document: 'FAC' }, f); }) };
@@ -89,8 +94,10 @@ const mockQuery = jest.fn(async function(sql, params) {
       montant_ht: parseFloat(params[5]),
       tva: parseFloat(params[6]),
       montant_ttc: parseFloat(params[7]),
-      statut: 'EMISE',
-      chorus_id: params[8] || ('MOCK-' + params[0]),
+      statut: /'BROUILLON'/.test(s) ? 'BROUILLON' : 'EMISE',
+      chorus_id: /channel/.test(s) ? null : (params[8] || ('MOCK-' + params[0])),
+      channel: /channel/.test(s) ? params[8] : 'MANUAL',
+      recipient_type: /recipient_type/.test(s) ? params[9] : 'PRIVATE_COMPANY',
       date_emission: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -104,6 +111,27 @@ const mockQuery = jest.fn(async function(sql, params) {
   }
   if (/FROM regulatory_events/.test(s)) {
     return { rows: mockRegulatoryEvents.filter(function(e) { return e.siret === params[0]; }) };
+  }
+  if (/FROM chorus_recipient_cache/.test(s)) {
+    return { rows: mockChorusRecipientCache.filter(function(c) { return c.entreprise_id === params[0] && c.siret === params[1]; }) };
+  }
+  if (/INSERT INTO chorus_recipient_cache/.test(s)) {
+    var cache = { id: mockChorusRecipientCache.length + 1, entreprise_id: params[0], siret: params[1], id_structure: params[2], designation: params[3], statut: params[4], raw_response: params[5], checked_at: new Date().toISOString() };
+    mockChorusRecipientCache.push(cache);
+    return { rows: [cache] };
+  }
+  if (/INSERT INTO chorus_services_cache/.test(s)) {
+    return { rows: [{ id: 1 }] };
+  }
+  if (/INSERT INTO chorus_transmissions/.test(s)) {
+    var tr = { id: mockChorusTransmissions.length + 1, entreprise_id: params[0], invoice_id: parseInt(params[1]), environment: params[2], recipient_siret: params[3], status: /'submitted'/.test(s) ? 'submitted' : 'recipient_validated', created_at: new Date().toISOString() };
+    mockChorusTransmissions.push(tr);
+    return { rows: [tr] };
+  }
+  if (/FROM chorus_transmissions/.test(s)) {
+    var trs = mockChorusTransmissions.filter(function(t) { return t.entreprise_id === params[0]; });
+    if (/invoice_id = \$2/.test(s)) trs = trs.filter(function(t) { return t.invoice_id === parseInt(params[1]); });
+    return { rows: trs };
   }
   if (/UPDATE factures SET statut/.test(s)) {
     var found = mockFactures.find(function(f) { return f.id === parseInt(params[1]); });
@@ -223,6 +251,8 @@ beforeEach(function() {
   mockEntreprises.length = 0;
   mockOtps.length = 0;
   mockRegulatoryEvents.length = 0;
+  mockChorusTransmissions.length = 0;
+  mockChorusRecipientCache.length = 0;
   mockQuery.mockClear();
 });
 
@@ -367,7 +397,7 @@ describe('POST /factures', function() {
     });
     expect(res.status).toBe(201);
     expect(res.body.montant_ttc).toBe(588);
-    expect(res.body.statut).toBe('EMISE');
+    expect(res.body.statut).toBe('BROUILLON');
     expect(res.body.emetteur_siret).toBe('12345678901234');
     expect(mockQuery.mock.calls.some(function(call) {
       return /INSERT INTO regulatory_events/.test(String(call[0]));
@@ -643,5 +673,52 @@ describe('Middleware readOnly (role comptable)', function() {
     var token = makeToken({ siret: '12345678901234', role: 'comptable' });
     var res = await request(app).get('/factures').set(bearer(token));
     expect(res.status).toBe(200);
+  });
+});
+
+describe('Routes /api/chorus', function() {
+  it('retourne config sans secrets', async function() {
+    var token = makeToken();
+    var res = await request(app).get('/api/chorus/config/status').set(bearer(token));
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('mockMode', true);
+    expect(res.body).not.toHaveProperty('clientSecret');
+  });
+
+  it('refuse SIRET invalide', async function() {
+    var token = makeToken();
+    var res = await request(app).post('/api/chorus/structures/search').set(bearer(token)).send({ siret: '123' });
+    expect(res.status).toBe(400);
+  });
+
+  it('cherche structure en mock', async function() {
+    var token = makeToken();
+    var res = await request(app).post('/api/chorus/structures/search').set(bearer(token)).send({ siret: '12345678901234' });
+    expect(res.status).toBe(200);
+    expect(res.body.found).toBe(true);
+    expect(res.body.idStructure).toContain('MOCK-');
+  });
+
+  it('prepare une facture tenant-safe', async function() {
+    var token = makeToken();
+    await request(app).post('/factures').set(bearer(token)).send({ client_siret: '98765432109876', client_nom: 'Mairie Test', montant_ht: 100, tva: 20 });
+    var res = await request(app).post('/api/chorus/invoices/1/prepare').set(bearer(token));
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('transmissionId');
+  });
+
+  it('refuse facture autre entreprise', async function() {
+    mockFactures.push({ id: 99, emetteur_siret: '99999999999999', client_siret: '98765432109876', client_nom: 'Autre', montant_ht: 100, montant_ttc: 120 });
+    var token = makeToken({ siret: '12345678901234' });
+    var res = await request(app).post('/api/chorus/invoices/99/prepare').set(bearer(token));
+    expect(res.status).toBe(404);
+  });
+
+  it('submit-pdf mock cree transmission submitted', async function() {
+    var token = makeToken();
+    await request(app).post('/factures').set(bearer(token)).send({ client_siret: '98765432109876', client_nom: 'Mairie Test', montant_ht: 100, tva: 20 });
+    var res = await request(app).post('/api/chorus/invoices/1/submit-pdf').set(bearer(token)).send({ pdfBase64: Buffer.from('pdf').toString('base64'), filename: 'facture.pdf' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('submitted');
   });
 });

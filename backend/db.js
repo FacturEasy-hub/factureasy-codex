@@ -22,12 +22,17 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
     factures: [],
     authOtps: [],
     regulatoryEvents: [],
+    chorusTransmissions: [],
+    chorusRecipientCache: [],
+    chorusServicesCache: [],
     invoiceSequences: [],
     nextEntrepriseId: 1,
     nextClientId: 1,
     nextFactureId: 1,
     nextOtpId: 1,
     nextRegulatoryEventId: 1,
+    nextChorusTransmissionId: 1,
+    nextChorusCacheId: 1,
   };
 
   const nowIso = () => new Date().toISOString();
@@ -296,7 +301,9 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
         tva: Number(params[6]),
         montant_ttc: Number(params[7]),
         statut: /'BROUILLON'/i.test(s) ? 'BROUILLON' : 'EMISE',
-        chorus_id: params[8] || null,
+        chorus_id: /channel/i.test(s) ? null : (params[8] || null),
+        channel: /channel/i.test(s) ? params[8] : 'MANUAL',
+        recipient_type: /recipient_type/i.test(s) ? params[9] : 'PRIVATE_COMPANY',
         date_emission: nowIso(),
         created_at: nowIso(),
         updated_at: nowIso(),
@@ -329,6 +336,39 @@ if (process.env.DATABASE_URL || process.env.NODE_ENV === 'test') {
         .filter((e) => e.siret === params[0])
         .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
         .slice(0, limit);
+      return { rows, rowCount: rows.length };
+    }
+
+    if (/FROM chorus_recipient_cache/i.test(s)) {
+      const row = state.chorusRecipientCache.find((c) => c.entreprise_id === params[0] && c.siret === params[1]);
+      return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
+    }
+
+    if (/INSERT INTO chorus_recipient_cache/i.test(s)) {
+      let row = state.chorusRecipientCache.find((c) => c.entreprise_id === params[0] && c.siret === params[1]);
+      if (!row) {
+        row = { id: state.nextChorusCacheId++, entreprise_id: params[0], siret: params[1], created_at: nowIso() };
+        state.chorusRecipientCache.push(row);
+      }
+      Object.assign(row, { id_structure: params[2], designation: params[3], statut: params[4], raw_response: params[5], checked_at: nowIso() });
+      return { rows: [row], rowCount: 1 };
+    }
+
+    if (/INSERT INTO chorus_services_cache/i.test(s)) {
+      const row = { id: state.nextChorusCacheId++, entreprise_id: params[0], id_structure: params[1], code_service: params[2], libelle_service: params[3], actif: params[4], raw_response: params[5], checked_at: nowIso(), created_at: nowIso() };
+      state.chorusServicesCache.push(row);
+      return { rows: [row], rowCount: 1 };
+    }
+
+    if (/INSERT INTO chorus_transmissions/i.test(s)) {
+      const row = { id: state.nextChorusTransmissionId++, entreprise_id: params[0], invoice_id: Number(params[1]), environment: params[2], recipient_siret: params[3], status: /'submitted'/.test(s) ? 'submitted' : 'recipient_validated', created_at: nowIso(), updated_at: nowIso() };
+      state.chorusTransmissions.push(row);
+      return { rows: [row], rowCount: 1 };
+    }
+
+    if (/FROM chorus_transmissions/i.test(s)) {
+      let rows = state.chorusTransmissions.filter((t) => t.entreprise_id === params[0]);
+      if (/invoice_id = \$2/i.test(s)) rows = rows.filter((t) => t.invoice_id === Number(params[1]));
       return { rows, rowCount: rows.length };
     }
 

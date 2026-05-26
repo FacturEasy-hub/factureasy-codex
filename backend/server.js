@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 function loadEnvFile(file = '.env') {
   if (!fs.existsSync(file)) return;
@@ -22,7 +22,6 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'factureasy-dev-secret
 const express    = require('express');
 const cors       = require('cors');
 const path       = require('path');
-const http       = require('./services/http');
 const pool       = require('./db');
 const {
   DEFAULT_ADMIN_SECRET,
@@ -84,6 +83,8 @@ async function nextNumeroFacture(siret) {
 
 const { generateToken, authenticate, requireAdmin } = require('./middleware/auth');
 const { router: comptableRouter, readOnly } = require('./routes/comptable');
+const chorusRoutes = require('./routes/chorus');
+const chorusClient = require('./services/chorusClient');
 const ADMIN_SECRET = process.env.ADMIN_SECRET || DEFAULT_ADMIN_SECRET;
 assertStrongSecret('ADMIN_SECRET', ADMIN_SECRET, DEFAULT_ADMIN_SECRET);
 
@@ -142,31 +143,7 @@ app.use('/stripe/webhook', stripeRoutes.webhookRouter);
 
 app.use(express.json());
 app.use('/stripe', stripeRoutes);
-
-// ─── Chorus Pro OAuth2 ───────────────────────────────────────────────────────
-
-const CHORUS_API   = 'https://chorus-pro.gouv.fr/api';
-const CHORUS_TOKEN = 'https://oauth.chorus-pro.gouv.fr/token';
-
-let _cachedToken = null;
-let _tokenExpiry = 0;
-
-async function getChorusToken() {
-  if (_cachedToken && Date.now() < _tokenExpiry) return _cachedToken;
-  const res = await http.post(CHORUS_TOKEN, new URLSearchParams({
-    grant_type:    'client_credentials',
-    client_id:     process.env.CHORUS_CLIENT_ID,
-    client_secret: process.env.CHORUS_CLIENT_SECRET,
-    scope:         'openid'
-  }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-  _cachedToken = res.data.access_token;
-  _tokenExpiry = Date.now() + (res.data.expires_in - 30) * 1000;
-  return _cachedToken;
-}
-
-function chorusHeaders(token) {
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-}
+app.use('/api/chorus', chorusRoutes);
 
 // ─── Initialisation DB (admin uniquement) ────────────────────────────────────
 app.get('/init-db', requireAdmin, async (req, res) => {
@@ -226,6 +203,10 @@ app.get('/init-db', requireAdmin, async (req, res) => {
         montant_ttc           NUMERIC(12,2) NOT NULL,
         statut                VARCHAR(50) DEFAULT 'EMISE',
         chorus_id             VARCHAR(100),
+        channel               VARCHAR(40) DEFAULT 'MANUAL',
+        chorus_status         VARCHAR(40),
+        chorus_transmission_id INTEGER,
+        recipient_type        VARCHAR(40) DEFAULT 'PRIVATE_COMPANY',
         type_document         VARCHAR(10) DEFAULT 'FAC',
         avoir_de_facture_id   INTEGER REFERENCES factures(id),
         date_emission         TIMESTAMP DEFAULT NOW(),
@@ -236,6 +217,10 @@ app.get('/init-db', requireAdmin, async (req, res) => {
       DO $$ BEGIN
         ALTER TABLE factures ADD COLUMN IF NOT EXISTS type_document VARCHAR(10) DEFAULT 'FAC';
         ALTER TABLE factures ADD COLUMN IF NOT EXISTS avoir_de_facture_id INTEGER REFERENCES factures(id);
+        ALTER TABLE factures ADD COLUMN IF NOT EXISTS channel VARCHAR(40) DEFAULT 'MANUAL';
+        ALTER TABLE factures ADD COLUMN IF NOT EXISTS chorus_status VARCHAR(40);
+        ALTER TABLE factures ADD COLUMN IF NOT EXISTS chorus_transmission_id INTEGER;
+        ALTER TABLE factures ADD COLUMN IF NOT EXISTS recipient_type VARCHAR(40) DEFAULT 'PRIVATE_COMPANY';
       EXCEPTION WHEN duplicate_column THEN NULL;
       END $$;
 
@@ -249,6 +234,7 @@ app.get('/init-db', requireAdmin, async (req, res) => {
 
       CREATE INDEX IF NOT EXISTS idx_factures_siret  ON factures(emetteur_siret);
       CREATE INDEX IF NOT EXISTS idx_factures_statut ON factures(statut);
+      CREATE INDEX IF NOT EXISTS idx_factures_channel ON factures(channel);
 
       CREATE TABLE IF NOT EXISTS auth_otps (
         id            SERIAL PRIMARY KEY,
@@ -360,6 +346,60 @@ app.get('/init-db', requireAdmin, async (req, res) => {
       CREATE INDEX IF NOT EXISTS idx_reg_events_invoice    ON regulatory_events(invoice_id);
       CREATE INDEX IF NOT EXISTS idx_reg_events_status     ON regulatory_events(status);
       CREATE INDEX IF NOT EXISTS idx_reg_events_created_at ON regulatory_events(created_at);
+
+      CREATE TABLE IF NOT EXISTS chorus_transmissions (
+        id                     SERIAL PRIMARY KEY,
+        entreprise_id          INTEGER,
+        invoice_id             INTEGER,
+        transmission_type      TEXT NOT NULL DEFAULT 'B2G_CHORUS',
+        environment            TEXT NOT NULL DEFAULT 'sandbox',
+        recipient_siret        TEXT,
+        recipient_structure_id TEXT,
+        service_code           TEXT,
+        engagement_number      TEXT,
+        status                 TEXT NOT NULL DEFAULT 'draft',
+        chorus_invoice_id      TEXT,
+        chorus_file_id         TEXT,
+        request_payload        JSONB,
+        response_payload       JSONB,
+        error_code             TEXT,
+        error_message          TEXT,
+        last_attempt_at        TIMESTAMPTZ,
+        submitted_at           TIMESTAMPTZ,
+        created_at             TIMESTAMPTZ DEFAULT NOW(),
+        updated_at             TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_chorus_transmissions_entreprise ON chorus_transmissions(entreprise_id);
+      CREATE INDEX IF NOT EXISTS idx_chorus_transmissions_invoice    ON chorus_transmissions(invoice_id);
+      CREATE INDEX IF NOT EXISTS idx_chorus_transmissions_status     ON chorus_transmissions(status);
+      CREATE INDEX IF NOT EXISTS idx_chorus_transmissions_siret      ON chorus_transmissions(recipient_siret);
+      CREATE INDEX IF NOT EXISTS idx_chorus_transmissions_created    ON chorus_transmissions(created_at);
+
+      CREATE TABLE IF NOT EXISTS chorus_recipient_cache (
+        id             SERIAL PRIMARY KEY,
+        entreprise_id  INTEGER,
+        siret          TEXT NOT NULL,
+        id_structure   TEXT,
+        designation    TEXT,
+        statut         TEXT,
+        raw_response   JSONB,
+        checked_at     TIMESTAMPTZ DEFAULT NOW(),
+        created_at     TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(entreprise_id, siret)
+      );
+
+      CREATE TABLE IF NOT EXISTS chorus_services_cache (
+        id              SERIAL PRIMARY KEY,
+        entreprise_id   INTEGER,
+        siret           TEXT,
+        id_structure    TEXT,
+        code_service    TEXT,
+        libelle_service TEXT,
+        actif           BOOLEAN,
+        raw_response    JSONB,
+        checked_at      TIMESTAMPTZ DEFAULT NOW(),
+        created_at      TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
     res.json({ ok: true, message: 'Schéma initialisé' });
   } catch (err) {
@@ -666,7 +706,6 @@ app.post('/factures', authenticate, async (req, res) => {
     const numero_engagement = sanitizeText(req.body.numero_engagement, 100);
     const montant_ht = parsePositiveAmount(req.body.montant_ht, 'montant_ht');
     const tva = parseTva(req.body.tva === undefined ? 20 : req.body.tva);
-    // IDOR fix: emetteur_siret forcé depuis le JWT
     const emetteur_siret = req.user.siret;
     if (!validateSiret(client_siret) || !client_nom) {
       return res.status(400).json({ error: 'Champs requis : client_siret valide, client_nom, montant_ht' });
@@ -674,97 +713,45 @@ app.post('/factures', authenticate, async (req, res) => {
 
     const montant_ttc = parseFloat((montant_ht * (1 + tva / 100)).toFixed(2));
     const montant_tva = parseFloat((montant_ht * tva / 100).toFixed(2));
-    const numero      = await nextNumeroFacture(emetteur_siret);
+    const numero = await nextNumeroFacture(emetteur_siret);
     const date_emission = new Date().toISOString().split('T')[0];
     const regulatoryChannel = await regulatoryChannelForInvoice(emetteur_siret, client_siret, client_nom);
-
-    // Si pas de credentials Chorus Pro, ou client non public -> facture preparee localement.
-    if (!process.env.CHORUS_CLIENT_ID || regulatoryChannel !== 'B2G_CHORUS_PRO') {
-      const { rows } = await pool.query(
-        `INSERT INTO factures
-          (numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, statut, chorus_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'BROUILLON',NULL) RETURNING *`,
-        [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc]
-      );
-      await pool.query(
-        `INSERT INTO regulatory_events (siret, invoice_id, channel, status, payload_json)
-         VALUES ($1,$2,$3,'PREPARED',$4)`,
-        [emetteur_siret, rows[0].id, regulatoryChannel, { client_siret, montant_ht, tva }]
-      ).catch(() => {});
-      return res.status(201).json(rows[0]);
-    }
-
-    const token = await getChorusToken();
-    const payload = {
-      codeFournisseur:  emetteur_siret,
-      codeDestinataire: client_siret,
-      numeroFacture:    numero,
-      dateFacture:      date_emission,
-      montantHT:        montant_ht,
-      montantTVA:       montant_tva,
-      montantTTC:       montant_ttc,
-      typeFacture:      'FAC',
-      lignes: [{
-        numeroLigne:    1,
-        designation:    description || 'Prestation de service',
-        quantite:       1,
-        prixUnitaireHT: montant_ht,
-        tauxTVA:        tva,
-        montantHT:      montant_ht
-      }]
-    };
-    if (numero_engagement) payload.numeroEngagement = numero_engagement;
-
-    const chorusRes = await http.post(
-      `${CHORUS_API}/cpro/factures/v1/deposer`, payload, { headers: chorusHeaders(token) }
-    );
-    const chorus_id = chorusRes.data.identifiantFactureCPP || chorusRes.data.numeroFactureCPP;
+    const channel = regulatoryChannel === 'B2G_CHORUS_PRO' ? 'B2G_CHORUS' : regulatoryChannel;
+    const recipientType = regulatoryChannel === 'B2G_CHORUS_PRO' ? 'PUBLIC' : 'PRIVATE_COMPANY';
 
     const { rows } = await pool.query(
       `INSERT INTO factures
-        (numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, statut, chorus_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'EMISE',$9) RETURNING *`,
-      [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, chorus_id]
+        (numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, statut, chorus_id, channel, chorus_status, recipient_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'BROUILLON',NULL,$9,NULL,$10) RETURNING *`,
+      [numero, emetteur_siret, client_siret, client_nom, description, montant_ht, tva, montant_ttc, channel, recipientType]
     );
     await pool.query(
-      `INSERT INTO regulatory_events (siret, invoice_id, channel, status, payload_json, response_json)
-       VALUES ($1,$2,'B2G_CHORUS_PRO','SENT',$3,$4)`,
-      [emetteur_siret, rows[0].id, payload, chorusRes.data || {}]
+      `INSERT INTO regulatory_events (siret, invoice_id, channel, status, payload_json)
+       VALUES ($1,$2,$3,'PREPARED',$4)`,
+      [emetteur_siret, rows[0].id, regulatoryChannel, { client_siret, montant_ht, tva, numero_engagement, date_emission, montant_tva }]
     ).catch(() => {});
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     const detail = err.response?.data || err.message;
-    console.error('[POST /factures Chorus]', detail);
-    res.status(502).json({ error: 'Erreur Chorus Pro', detail });
+    console.error('[POST /factures]', detail);
+    res.status(500).json({ error: 'Erreur creation facture', detail });
   }
 });
-
 app.patch('/factures/:id(\\d+)/statut', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM factures WHERE id = $1', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Facture introuvable' });
-    // IDOR fix: vérifier que la facture appartient à l'entreprise connectée
     if (rows[0].emetteur_siret !== req.user.siret) {
-      return res.status(403).json({ error: 'Accès interdit à cette facture' });
+      return res.status(403).json({ error: 'Acces interdit a cette facture' });
     }
-    if (!rows[0].chorus_id) return res.status(400).json({ error: 'Pas de chorus_id — facture non émise via Chorus' });
-
-    const token = await getChorusToken();
-    const chorusRes = await http.get(
-      `${CHORUS_API}/cpro/factures/v1/consulter/identifiant/${rows[0].chorus_id}`,
-      { headers: chorusHeaders(token) }
-    );
-    const statut = chorusRes.data.statut || chorusRes.data.etatFacture;
-    await pool.query('UPDATE factures SET statut = $1, updated_at = NOW() WHERE id = $2', [statut, req.params.id]);
-    res.json({ ...rows[0], statut });
+    res.json({ ...rows[0], chorus_status: rows[0].chorus_id ? 'submitted_legacy' : 'local_only' });
   } catch (err) {
     console.error('[PATCH /factures/:id/statut]', err.message);
-    res.status(502).json({ error: 'Impossible de récupérer le statut Chorus Pro', detail: err.message });
+    res.status(500).json({ error: 'Impossible de recuperer le statut local', detail: err.message });
   }
 });
-
-// ─── Statistiques ────────────────────────────────────────────────────────────
+// Statistiques ────────────────────────────────────────────────────────────
 
 app.get('/regulatory-events', authenticate, async (req, res) => {
   try {
@@ -895,12 +882,7 @@ app.use('/backoffice', express.static(path.join(__dirname, 'public/backoffice'))
 app.get('/health', (req, res) => res.json({
   ok: true,
   ts: new Date().toISOString(),
-  chorus: {
-    process_ok: true,
-    configured: Boolean(process.env.CHORUS_CLIENT_ID && process.env.CHORUS_CLIENT_SECRET),
-    connected: false,
-    mode: process.env.CHORUS_CLIENT_ID ? 'configured_not_verified' : 'mock',
-  },
+  chorus: chorusClient.publicConfig(),
 }));
 
 // --- Lancement ---
@@ -911,3 +893,6 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
+
+
