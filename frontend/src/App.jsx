@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const APP_VERSION = 'chorus-piste-2026-05-26';
 
 // Utilitaires â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const fmt = (n) =>
@@ -4115,7 +4116,7 @@ function PublicLanding({ onStart }) {
   return (
     <iframe
       title="FacturEasy accueil"
-      src="/landing-home.html"
+      src={`/landing-home.html?v=${APP_VERSION}`}
       style={{ width: '100%', height: '100vh', border: 0, display: 'block' }}
     />
   );
