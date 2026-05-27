@@ -1,7 +1,7 @@
 {
-  "name": "FacturEasy — Facturation Chorus Pro",
+  "name": "FacturEasy - Facturation Chorus Pro",
   "short_name": "FacturEasy",
-  "description": "Facturation électronique Chorus Pro et gestion de trésorerie pour PME françaises.",
+  "description": "Facturation electronique Chorus Pro et gestion de tresorerie pour PME francaises.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
