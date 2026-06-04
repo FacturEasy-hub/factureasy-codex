@@ -923,7 +923,7 @@ function showCreateEnt(){
         <option value="equipe">Plan Equipe</option>
         <option value="business">Plan Business</option>
       </select>
-      <input id="new-ent-pass" class="f-inp" placeholder="Mot de passe" value="motdepasse123"/>
+      <input id="new-ent-pass" class="f-inp" placeholder="Mot de passe temporaire (8 caracteres min.)" type="password" autocomplete="new-password"/>
       <input id="new-ent-kbis" class="f-inp" placeholder="KBIS optionnel : lien ou reference fichier" style="grid-column:1 / -1"/>
       <textarea id="new-ent-notes" class="f-inp" placeholder="Notes admin optionnelles" style="grid-column:1 / -1;min-height:72px;resize:vertical"></textarea>
       <button class="f-btn" style="grid-column:1 / -1" onclick="createEnt()">Creer</button>

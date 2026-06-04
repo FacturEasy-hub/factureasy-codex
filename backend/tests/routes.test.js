@@ -674,6 +674,43 @@ describe('Middleware readOnly (role comptable)', function() {
     var res = await request(app).get('/factures').set(bearer(token));
     expect(res.status).toBe(200);
   });
+
+  it('POST /clients -> 403 pour un token role=comptable', async function() {
+    var token = makeToken({ siret: '12345678901234', role: 'comptable' });
+    var res = await request(app).post('/clients').set(bearer(token)).send({ nom: 'Client Test' });
+    expect(res.status).toBe(403);
+  });
+
+  it('POST /devis -> 403 pour un token role=comptable', async function() {
+    var token = makeToken({ siret: '12345678901234', role: 'comptable' });
+    var res = await request(app).post('/devis').set(bearer(token)).send({
+      client_nom: 'Client Test',
+      lignes: [{ description: 'Prestation', quantite: 1, prix_unitaire_ht: 100 }],
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('POST /api/chorus/structures/search -> 403 pour un token role=comptable', async function() {
+    var token = makeToken({ siret: '12345678901234', role: 'comptable' });
+    var res = await request(app).post('/api/chorus/structures/search').set(bearer(token)).send({ siret: '12345678901234' });
+    expect(res.status).toBe(403);
+  });
+
+  it('POST /stripe/create-checkout-session -> 403 pour un token role=comptable', async function() {
+    var token = makeToken({ siret: '12345678901234', role: 'comptable' });
+    var res = await request(app).post('/stripe/create-checkout-session').set(bearer(token)).send({ plan: 'solo' });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('CORS', function() {
+  it('refuse une origine Vercel non autorisee', async function() {
+    var res = await request(app)
+      .options('/health')
+      .set('Origin', 'https://evil-preview.vercel.app')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
 });
 
 describe('Routes /api/chorus', function() {

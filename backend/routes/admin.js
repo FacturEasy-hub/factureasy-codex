@@ -296,7 +296,7 @@ router.post('/entreprises', requireAdmin, async (req, res) => {
     const siret = sanitizeText(req.body.siret, 14);
     const nom = sanitizeText(req.body.nom, 255);
     const email = normalizeEmail(req.body.email || '');
-    const password = req.body.password || 'motdepasse123';
+    const password = req.body.password;
     const plan = sanitizeText(req.body.plan || 'gratuit', 50);
     const contactNom = sanitizeText(req.body.contact_nom || '', 255);
     const contactTelephone = sanitizeText(req.body.contact_telephone || '', 50);
@@ -307,7 +307,7 @@ router.post('/entreprises', requireAdmin, async (req, res) => {
     if (!validateSiret(siret)) return res.status(400).json({ error: 'SIRET invalide' });
     if (!nom) return res.status(400).json({ error: 'Nom requis' });
     if (email && !validateEmail(email)) return res.status(400).json({ error: 'Email invalide' });
-    if (!validatePassword(password)) return res.status(400).json({ error: 'Mot de passe trop court' });
+    if (!validatePassword(password)) return res.status(400).json({ error: 'Mot de passe requis (8 caracteres minimum)' });
     if (!['gratuit', 'solo', 'pro', 'equipe', 'business'].includes(plan)) {
       return res.status(400).json({ error: 'Plan invalide' });
     }

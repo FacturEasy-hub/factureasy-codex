@@ -24,6 +24,13 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 const webhookRouter = express.Router();
 
+function rejectReadOnlyRole(req, res, next) {
+  if (req.user?.role === 'comptable') {
+    return res.status(403).json({ error: 'Acces en lecture seule - role expert-comptable' });
+  }
+  next();
+}
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STRIPE_KEY            = process.env.STRIPE_SECRET_KEY     || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -110,7 +117,7 @@ function verifyStripeSignature(rawBody, sigHeader, secret) {
 // ─── POST /stripe/create-checkout-session ────────────────────────────────────
 // Body: { plan: 'solo'|'pro'|'equipe'|'business' }
 // Retourne: { url: 'https://checkout.stripe.com/...' }
-router.post('/create-checkout-session', authenticate, async (req, res) => {
+router.post('/create-checkout-session', authenticate, rejectReadOnlyRole, async (req, res) => {
   try {
     if (!STRIPE_KEY) {
       return res.status(503).json({ error: 'Stripe non configuré (STRIPE_SECRET_KEY manquant)' });
@@ -183,7 +190,7 @@ router.post('/create-checkout-session', authenticate, async (req, res) => {
 
 // ─── POST /stripe/portal ──────────────────────────────────────────────────────
 // Génère un lien vers le portail client Stripe (gérer CB, factures, annuler)
-router.post('/portal', authenticate, async (req, res) => {
+router.post('/portal', authenticate, rejectReadOnlyRole, async (req, res) => {
   try {
     if (!STRIPE_KEY) return res.status(503).json({ error: 'Stripe non configuré' });
 

@@ -6,6 +6,12 @@ const chorus = require('../services/chorusClient');
 
 const router = express.Router();
 router.use(authenticate);
+router.use((req, res, next) => {
+  if (req.user?.role === 'comptable' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return res.status(403).json({ error: 'Acces en lecture seule - role expert-comptable' });
+  }
+  next();
+});
 
 function entrepriseId(req) {
   return Number(req.user.id || 0) || null;

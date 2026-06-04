@@ -121,16 +121,17 @@ try {
 } catch (_) { /* express-rate-limit optionnel — npm install express-rate-limit */ }
 
 // ─── CORS restreint aux origines autorisées ────────────────────────────────────
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3001,http://127.0.0.1:3001')
-  .split(',').map(o => o.trim());
+const DEFAULT_ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? 'https://factureasy-codex.vercel.app,https://factureasy-codex.onrender.com'
+  : 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3001,http://127.0.0.1:3001';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS)
+  .split(',')
+  .map(o => o.trim().replace(/\/$/, ''))
+  .filter(Boolean);
 app.use(cors({
   origin: function(origin, cb) {
     if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    // Autoriser tous les domaines Vercel du projet (previews + production)
-    if (/\.vercel\.app$/.test(origin)) return cb(null, true);
-    // Autoriser le backend lui-même (admin panel servi depuis onrender.com)
-    if (/\.onrender\.com$/.test(origin)) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin.replace(/\/$/, ''))) return cb(null, true);
     cb(new Error('Origin non autorisée par CORS : ' + origin));
   },
   credentials: true,
@@ -597,7 +598,7 @@ app.get('/clients', authenticate, async (req, res) => {
   }
 });
 
-app.post('/clients', authenticate, async (req, res) => {
+app.post('/clients', authenticate, readOnly, async (req, res) => {
   try {
     const nom = sanitizeText(req.body.nom, 255);
     const siretClient = sanitizeText(req.body.siret_client || '', 14);
@@ -627,7 +628,7 @@ app.post('/clients', authenticate, async (req, res) => {
   }
 });
 
-app.put('/clients/:id(\\d+)', authenticate, async (req, res) => {
+app.put('/clients/:id(\\d+)', authenticate, readOnly, async (req, res) => {
   try {
     const clientType = normalizeClientType(req.body.client_type);
     const regulatoryChannel = channelForClientType(clientType);
@@ -650,7 +651,7 @@ app.put('/clients/:id(\\d+)', authenticate, async (req, res) => {
   }
 });
 
-app.use(['/factures', '/finances', '/stats'], authenticate, readOnly);
+app.use(['/factures', '/finances', '/stats', '/relances', '/catalogue', '/devis'], authenticate, readOnly);
 
 // ─── Factures ────────────────────────────────────────────────────────────────
 

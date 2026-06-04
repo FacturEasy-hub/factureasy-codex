@@ -904,7 +904,7 @@ function showCreateEnt(){
       <input id="new-ent-nom" class="f-inp" placeholder="Nom entreprise"/>
       <input id="new-ent-siret" class="f-inp" placeholder="SIRET 14 chiffres" maxlength="14"/>
       <input id="new-ent-email" class="f-inp" placeholder="Email"/>
-      <input id="new-ent-pass" class="f-inp" placeholder="Mot de passe" value="motdepasse123"/>
+      <input id="new-ent-pass" class="f-inp" placeholder="Mot de passe temporaire (8 caracteres min.)" type="password" autocomplete="new-password"/>
       <button class="f-btn" onclick="createEnt()">Creer</button>
     </div>`;
   document.getElementById('modal').style.display='flex';
