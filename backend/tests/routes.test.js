@@ -297,6 +297,16 @@ describe('POST /auth/login', function() {
     expect(decoded.siret).toBe('12345678901234');
   });
 
+  it('pose un cookie httpOnly et authentifie via cookie', async function() {
+    var res = await request(app).post('/auth/login').send({
+      siret: '12345678901234', nom: 'Test SARL', email: 'test@example.com', password: 'motdepasse123',
+    });
+    var cookie = (res.headers['set-cookie'] || []).find((c) => c.startsWith('fe_token='));
+    expect(cookie).toContain('HttpOnly');
+    var protectedRes = await request(app).get('/factures').set('Cookie', cookie);
+    expect(protectedRes.status).toBe(200);
+  });
+
   it('genere un OTP email pour un compte existant', async function() {
     await request(app).post('/auth/login').send({
       siret: '12345678901234', nom: 'Test SARL', email: 'test@example.com', password: 'motdepasse123',

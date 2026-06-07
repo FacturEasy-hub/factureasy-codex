@@ -47,21 +47,19 @@ const initiales = (nom) =>
     : '??';
 
 function apiCall(path, options = {}) {
-  const token = localStorage.getItem('fe_token');
   return fetch(`${API_BASE}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
 }
 
 async function downloadApiFile(path, filename) {
-  const token = localStorage.getItem('fe_token');
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
   });
   if (!res.ok) throw new Error('Téléchargement impossible');
   const blob = await res.blob();
@@ -339,7 +337,6 @@ function LoginScreen({ onLogin }) {
       });
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem('fe_token', data.token);
         localStorage.setItem('fe_company', JSON.stringify(data.entreprise || { siret, nom }));
         onLogin(data.entreprise || { siret, nom });
         return;
@@ -385,7 +382,6 @@ function LoginScreen({ onLogin }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Code invalide');
-      localStorage.setItem('fe_token', data.token);
       localStorage.setItem('fe_company', JSON.stringify(data.entreprise || { siret, nom }));
       onLogin(data.entreprise || { siret, nom });
     } catch (e) {
@@ -4192,14 +4188,22 @@ export default function App() {
   const [revenus, setRevenus] = useState([]);
   const [depenses, setDepenses] = useState([]);
 
-  // Restaurer session depuis localStorage
+  // Restaurer session depuis cookie httpOnly.
   useEffect(() => {
-    const stored = localStorage.getItem('fe_company');
-    if (stored && localStorage.getItem('fe_token')) {
+    localStorage.removeItem('fe_token');
+    const restore = async () => {
       try {
-        setCompany(JSON.parse(stored));
+        const res = await apiCall('/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setCompany(data);
+          localStorage.setItem('fe_company', JSON.stringify(data));
+          return;
+        }
       } catch {}
-    }
+      localStorage.removeItem('fe_company');
+    };
+    restore();
   }, []);
 
   // Afficher l'onboarding au premier login (si les étapes ne sont pas toutes faites)
@@ -4242,7 +4246,10 @@ export default function App() {
     } catch {}
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiCall('/auth/logout', { method: 'POST' });
+    } catch {}
     localStorage.removeItem('fe_token');
     localStorage.removeItem('fe_company');
     setCompany(null);

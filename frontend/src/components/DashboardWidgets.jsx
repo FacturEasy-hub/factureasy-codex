@@ -4,6 +4,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function apiFetch(path, token) {
   return fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

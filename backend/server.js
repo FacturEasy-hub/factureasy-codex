@@ -89,6 +89,26 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || DEFAULT_ADMIN_SECRET;
 assertStrongSecret('ADMIN_SECRET', ADMIN_SECRET, DEFAULT_ADMIN_SECRET);
 
 const app = express();
+const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+function authCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: IS_PROD ? 'none' : 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
+  };
+}
+
+function setAuthCookie(res, token) {
+  res.cookie('fe_token', token, authCookieOptions());
+}
+
+function clearAuthCookie(res) {
+  res.clearCookie('fe_token', { ...authCookieOptions(), maxAge: undefined });
+}
 
 // Headers de sécurité minimum même si helmet n'est pas installé
 app.use((req, res, next) => {
@@ -451,6 +471,7 @@ app.post('/auth/login', async (req, res) => {
     }
 
     const token = generateToken({ siret: entreprise.siret, nom: entreprise.nom, id: entreprise.id, email: entreprise.email, role: 'user' });
+    setAuthCookie(res, token);
     res.json({ token, entreprise });
   } catch (err) {
     const safe = safeError(err);
@@ -511,6 +532,7 @@ app.post('/auth/verify-otp', async (req, res) => {
     if (!rows[0]) return res.status(404).json({ error: 'Entreprise introuvable' });
     const entreprise = rows[0];
     const token = generateToken({ siret: entreprise.siret, nom: entreprise.nom, id: entreprise.id, email: entreprise.email, role: 'user' });
+    setAuthCookie(res, token);
     res.json({ token, entreprise });
   } catch (err) {
     const safe = safeError(err);
@@ -532,6 +554,11 @@ app.get('/auth/me', authenticate, async (req, res) => {
     console.error('[GET /auth/me]', err.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+app.post('/auth/logout', (req, res) => {
+  clearAuthCookie(res);
+  res.json({ ok: true });
 });
 
 // ─── Entreprises ─────────────────────────────────────────────────────────────
@@ -832,6 +859,7 @@ app.post('/auth/admin', (req, res) => {
     return res.status(401).json({ error: 'Secret administrateur invalide' });
   }
   const token = generateToken({ role: 'admin', email: 'admin@factureasy.fr' });
+  setAuthCookie(res, token);
   res.json({ token, role: 'admin' });
 });
 
