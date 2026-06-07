@@ -83,7 +83,7 @@ router.post('/:factureId', authenticate, async (req, res) => {
     res.json({ ok: result.ok, mock: result.mock || false, facture: rows[0].numero });
   } catch (err) {
     console.error('[POST /relances/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -135,7 +135,7 @@ router.get('/auto', requireAdmin, async (req, res) => {
     res.json({ traite: results.length, resultats: results });
   } catch (err) {
     console.error('[GET /relances/auto]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -157,7 +157,7 @@ router.get('/', authenticate, async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[GET /relances]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

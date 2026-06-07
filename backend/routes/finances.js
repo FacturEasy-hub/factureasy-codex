@@ -67,7 +67,7 @@ router.get('/init-db', authenticate, async (req, res) => {
     res.json({ ok: true, message: 'Tables finances initialisées' });
   } catch (err) {
     console.error('[finances/init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -151,7 +151,7 @@ router.get('/categories', authenticate, async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[GET /categories]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -174,7 +174,7 @@ router.post('/categories', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /categories]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -236,7 +236,7 @@ router.get('/depenses', authenticate, async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[GET /depenses]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -288,7 +288,7 @@ router.post('/depenses', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /depenses]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -320,7 +320,7 @@ router.delete('/depenses/:id', authenticate, async (req, res) => {
     res.json({ ok: true, message: `Dépense #${id} supprimée` });
   } catch (err) {
     console.error('[DELETE /depenses/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -394,7 +394,7 @@ router.get('/revenus', authenticate, async (req, res) => {
     res.json(tous);
   } catch (err) {
     console.error('[GET /revenus]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -443,7 +443,7 @@ router.post('/revenus', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /revenus]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -515,7 +515,7 @@ router.get(['/vat-summary/:siret', '/ca3/:siret'], authenticate, async (req, res
     });
   } catch (err) {
     console.error('[GET /vat-summary/:siret]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -649,7 +649,7 @@ router.get('/dashboard/:siret', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[GET /finances/dashboard]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

@@ -42,7 +42,7 @@ router.get('/init-db', authenticate, async (req, res) => {
     res.json({ ok: true, message: 'Table journal_entries créée' });
   } catch (err) {
     console.error('[GET /comptabilite/init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -93,7 +93,7 @@ router.get('/journal', authenticate, async (req, res) => {
     res.json({ data: rows, total, page, limit });
   } catch (err) {
     console.error('[GET /comptabilite/journal]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -150,7 +150,7 @@ router.post('/journal', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /comptabilite/journal]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -222,7 +222,7 @@ router.get('/export-fec', authenticate, async (req, res) => {
     res.send(content);
   } catch (err) {
     console.error('[GET /comptabilite/export-fec]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -285,7 +285,7 @@ router.get('/balance', authenticate, async (req, res) => {
     res.json(balance);
   } catch (err) {
     console.error('[GET /comptabilite/balance]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

@@ -62,7 +62,7 @@ router.post('/invite-comptable', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[POST /auth/invite-comptable]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -102,7 +102,7 @@ router.post('/login-comptable', async (req, res) => {
     res.json({ token, siret_client: rows[0].siret, role: 'comptable' });
   } catch (err) {
     console.error('[POST /auth/login-comptable]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

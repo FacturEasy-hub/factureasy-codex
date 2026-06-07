@@ -76,7 +76,7 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /recurrentes]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -95,7 +95,7 @@ router.get('/', authenticate, async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[GET /recurrentes]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -134,7 +134,7 @@ router.patch('/:id', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[PATCH /recurrentes/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -198,7 +198,7 @@ router.post('/generate', requireAdmin, async (req, res) => {
     res.json({ generees: generated.length, factures: generated });
   } catch (err) {
     console.error('[POST /recurrentes/generate]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

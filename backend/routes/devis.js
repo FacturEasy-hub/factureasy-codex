@@ -92,7 +92,7 @@ router.get('/init-db', authenticate, async (req, res) => {
     res.json({ ok: true, message: 'Tables devis créées' });
   } catch (err) {
     console.error('[GET /devis/init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -139,7 +139,7 @@ router.get('/', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[GET /devis]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -163,7 +163,7 @@ router.get('/:id', authenticate, async (req, res) => {
     res.json({ ...rows[0], lignes });
   } catch (err) {
     console.error('[GET /devis/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -254,7 +254,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('[POST /devis]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   } finally {
     client.release();
   }
@@ -341,7 +341,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (err) {
     await dbClient.query('ROLLBACK');
     console.error('[PUT /devis/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   } finally {
     dbClient.release();
   }
@@ -388,7 +388,7 @@ router.patch('/:id/statut', authenticate, async (req, res) => {
     res.json(updated[0]);
   } catch (err) {
     console.error('[PATCH /devis/:id/statut]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -478,7 +478,7 @@ router.post('/:id/convertir', authenticate, async (req, res) => {
   } catch (err) {
     await dbClient.query('ROLLBACK');
     console.error('[POST /devis/:id/convertir]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   } finally {
     dbClient.release();
   }
@@ -504,7 +504,7 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /devis/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

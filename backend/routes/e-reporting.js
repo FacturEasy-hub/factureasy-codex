@@ -40,7 +40,7 @@ router.get('/init-db', authenticate, async (req, res) => {
     res.json({ ok: true, message: 'Table e_reporting créée' });
   } catch (err) {
     console.error('[GET /e-reporting/init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -73,7 +73,7 @@ router.get('/resume', authenticate, async (req, res) => {
     res.json({ annee, data: rows });
   } catch (err) {
     console.error('[GET /e-reporting/resume]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -104,7 +104,7 @@ router.get('/', authenticate, async (req, res) => {
     res.json({ data: rows, total: rows.length });
   } catch (err) {
     console.error('[GET /e-reporting]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -174,7 +174,7 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /e-reporting]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -222,7 +222,7 @@ router.patch('/:id/transmettre', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[PATCH /e-reporting/:id/transmettre]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -257,7 +257,7 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /e-reporting/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

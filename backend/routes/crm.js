@@ -46,7 +46,7 @@ router.get('/init-db', authenticate, async (req, res) => {
     res.json({ ok: true, message: 'Table crm_contrats créée' });
   } catch (err) {
     console.error('[GET /crm/init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -74,7 +74,7 @@ router.get('/contrats', authenticate, async (req, res) => {
     res.json({ data: rows, total: rows.length });
   } catch (err) {
     console.error('[GET /crm/contrats]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -132,7 +132,7 @@ router.post('/contrats', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /crm/contrats]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -198,7 +198,7 @@ router.put('/contrats/:id', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[PUT /crm/contrats/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -221,7 +221,7 @@ router.delete('/contrats/:id', authenticate, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /crm/contrats/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -246,7 +246,7 @@ router.get('/relances', authenticate, async (req, res) => {
     res.json({ data: rows, total: rows.length });
   } catch (err) {
     console.error('[GET /crm/relances]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

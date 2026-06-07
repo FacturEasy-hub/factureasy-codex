@@ -66,7 +66,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('[admin/stats]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -160,7 +160,7 @@ router.get('/revenue', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('[admin/revenue]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -233,7 +233,7 @@ router.get('/monitoring', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('[admin/monitoring]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -284,7 +284,7 @@ router.get('/entreprises', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('[admin/entreprises]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -329,7 +329,7 @@ router.post('/entreprises', requireAdmin, async (req, res) => {
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Entreprise deja existante' });
     console.error('[admin POST /entreprises]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -359,7 +359,7 @@ router.get('/entreprises/:siret', requireAdmin, async (req, res) => {
     res.json({ entreprise: ent[0], stats: stats[0], factures });
   } catch (err) {
     console.error('[admin/entreprises/:siret]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -386,7 +386,7 @@ router.patch('/entreprises/:siret/plan', requireAdmin, async (req, res) => {
     res.json({ ok: true, entreprise: rows[0] });
   } catch (err) {
     console.error('[admin/plan]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -421,7 +421,7 @@ router.patch('/entreprises/:siret/trial', requireAdmin, async (req, res) => {
     res.json({ ok: true, entreprise: rows[0] });
   } catch (err) {
     console.error('[admin/trial]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -488,7 +488,7 @@ router.post('/entreprises/:siret/relance', requireAdmin, async (req, res) => {
     res.json({ ok: true, sent: true, to: ent.email });
   } catch (err) {
     console.error('[admin/relance]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -534,7 +534,7 @@ router.get('/factures', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('[admin/factures]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -585,7 +585,7 @@ router.delete('/entreprises/:siret', requireAdmin, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[admin DELETE /entreprises/:siret]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   } finally {
     client.release();
   }

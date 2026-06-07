@@ -87,7 +87,7 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /factures/:id/avoir]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -111,7 +111,7 @@ router.get('/', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[GET /factures/:id/avoir]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

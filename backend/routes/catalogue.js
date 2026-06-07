@@ -44,7 +44,7 @@ router.get('/init-db', authenticate, async (req, res) => {
     res.json({ ok: true, message: 'Table catalogue créée' });
   } catch (err) {
     console.error('[GET /catalogue/init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -90,7 +90,7 @@ router.get('/', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[GET /catalogue]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -116,7 +116,7 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /catalogue]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -156,7 +156,7 @@ router.put('/:id', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[PUT /catalogue/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -176,7 +176,7 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /catalogue/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -304,7 +304,7 @@ router.post('/import', authenticate, async (req, res) => {
     res.json({ ok: true, created, errors, total_lignes: lines.length - 1 });
   } catch (err) {
     console.error('[POST /catalogue/import]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

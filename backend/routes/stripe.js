@@ -184,7 +184,7 @@ router.post('/create-checkout-session', authenticate, rejectReadOnlyRole, async 
     res.json({ url: session.url });
   } catch (err) {
     console.error('[POST /stripe/create-checkout-session]', err.message);
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.status && err.status < 500 ? err.message : 'Erreur serveur' });
   }
 });
 
@@ -211,7 +211,7 @@ router.post('/portal', authenticate, rejectReadOnlyRole, async (req, res) => {
     res.json({ url: session.url });
   } catch (err) {
     console.error('[POST /stripe/portal]', err.message);
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.status && err.status < 500 ? err.message : 'Erreur serveur' });
   }
 });
 

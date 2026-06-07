@@ -103,7 +103,7 @@ router.get('/bilan', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[GET /rapports/bilan]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -173,7 +173,7 @@ router.get('/flux-tresorerie', authenticate, async (req, res) => {
     res.json(resultats);
   } catch (err) {
     console.error('[GET /rapports/flux-tresorerie]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -217,7 +217,7 @@ router.get('/top-clients', authenticate, async (req, res) => {
     })));
   } catch (err) {
     console.error('[GET /rapports/top-clients]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -258,7 +258,7 @@ router.get('/entonnoir-factures', authenticate, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[GET /rapports/entonnoir-factures]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

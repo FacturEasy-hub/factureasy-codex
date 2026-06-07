@@ -405,7 +405,7 @@ app.get('/init-db', requireAdmin, async (req, res) => {
     res.json({ ok: true, message: 'Schéma initialisé' });
   } catch (err) {
     console.error('[init-db]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -530,7 +530,7 @@ app.get('/auth/me', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[GET /auth/me]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -668,7 +668,7 @@ app.get('/factures', authenticate, async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[GET /factures]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -683,7 +683,7 @@ app.get('/factures/:id(\\d+)', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[GET /factures/:id]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -736,7 +736,7 @@ app.post('/factures', authenticate, async (req, res) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     const detail = err.response?.data || err.message;
     console.error('[POST /factures]', detail);
-    res.status(500).json({ error: 'Erreur creation facture', detail });
+    res.status(500).json({ error: 'Erreur creation facture' });
   }
 });
 app.patch('/factures/:id(\\d+)/statut', authenticate, async (req, res) => {
@@ -749,7 +749,7 @@ app.patch('/factures/:id(\\d+)/statut', authenticate, async (req, res) => {
     res.json({ ...rows[0], chorus_status: rows[0].chorus_id ? 'submitted_legacy' : 'local_only' });
   } catch (err) {
     console.error('[PATCH /factures/:id/statut]', err.message);
-    res.status(500).json({ error: 'Impossible de recuperer le statut local', detail: err.message });
+    res.status(500).json({ error: 'Impossible de recuperer le statut local' });
   }
 });
 // Statistiques ────────────────────────────────────────────────────────────
@@ -818,7 +818,7 @@ app.get('/stats/:siret', authenticate, async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[GET /stats]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
