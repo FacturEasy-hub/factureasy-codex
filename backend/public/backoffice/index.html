@@ -369,7 +369,7 @@ tbody tr:hover td{background:#12141f}
                 <div class="detail-item"><label>URL API</label><span class="mono" id="sys-api-url"></span></div>
                 <div class="detail-item"><label>Statut</label><span id="sys-status">—</span></div>
                 <div class="detail-item"><label>Rôle JWT</label><span>admin</span></div>
-                <div class="detail-item"><label>Token (extrait)</label><span class="mono" id="sys-token">—</span></div>
+                <div class="detail-item"><label>Stockage token</label><span class="mono" id="sys-token">Cookie httpOnly</span></div>
               </div>
               <button class="f-btn" onclick="checkHealth()">Tester la connexion</button>
             </div>
@@ -407,23 +407,7 @@ tbody tr:hover td{background:#12141f}
 // ═══════════════════════════════════════════════════════
 const API = window.location.origin;
 
-const safeStorage = (() => {
-  try {
-    const s = window.sessionStorage;
-    const k = '__fe_admin_test__';
-    s.setItem(k, '1');
-    s.removeItem(k);
-    return s;
-  } catch {
-    const mem = {};
-    return {
-      getItem: key => mem[key] || '',
-      setItem: (key, value) => { mem[key] = String(value); },
-      removeItem: key => { delete mem[key]; },
-    };
-  }
-})();
-let TOKEN = safeStorage.getItem('fe_admin_token') || '';
+let HAS_SESSION = false;
 let pageEnt=1, pageFact=1, pageSub=1;
 const DEV_ADMIN_SECRET = 'factureasy-admin-change-in-prod';
 
@@ -437,10 +421,11 @@ function prefillDevSecret(){
 // ═══════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════
-const hdrs = () => ({'Content-Type':'application/json', Authorization:`Bearer ${TOKEN}`});
+const hdrs = () => ({'Content-Type':'application/json'});
 window.fetch = (url, opts = {}) => new Promise((resolve, reject) => {
   const xhr = new XMLHttpRequest();
   xhr.open(opts.method || 'GET', url);
+  xhr.withCredentials = opts.credentials === 'include';
   Object.entries(opts.headers || {}).forEach(([k, v]) => xhr.setRequestHeader(k, v));
   xhr.onload = () => resolve({
     ok: xhr.status >= 200 && xhr.status < 300,
@@ -507,7 +492,7 @@ function pg(cid,page,pages,fn){
 }
 
 async function apiFetch(path,opts={}) {
-  const r=await fetch(`${API}${path}`,{...opts,headers:hdrs()});
+  const r=await fetch(`${API}${path}`,{...opts,credentials:'include',headers:{...hdrs(),...(opts.headers||{})}});
   if(r.status===401){doLogout();throw new Error('Session expirée');}
   const data=await r.json();
   if(!r.ok) throw new Error(data.error||`Erreur ${r.status}`);
@@ -524,20 +509,22 @@ async function doLogin(){
   if(!secret){errEl.textContent='Saisissez le secret administrateur.';return;}
   btn.disabled=true; btn.textContent='Connexion…'; errEl.textContent='';
   try{
-    const r=await fetch(`${API}/auth/admin`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});
+    const r=await fetch(`${API}/auth/admin`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});
     const ct = r.headers.get('content-type') || '';
     const data = ct.includes('application/json') ? await r.json() : { error: `Réponse serveur invalide (${r.status})` };
     if(!r.ok) throw new Error(data.error||'Secret invalide');
-    TOKEN=data.token;
-    safeStorage.setItem('fe_admin_token',TOKEN);
+    HAS_SESSION=true;
     initApp();
   }catch(e){errEl.textContent=e.message;}
   finally{btn.disabled=false;btn.textContent='Se connecter';}
 }
 window.doLogin = doLogin;
 
-function doLogout(){
-  safeStorage.removeItem('fe_admin_token'); TOKEN='';
+async function doLogout(){
+  if (HAS_SESSION) {
+    try { await fetch(`${API}/auth/logout`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'} }); } catch {}
+  }
+  HAS_SESSION=false;
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('secret-input').value='';
@@ -549,6 +536,16 @@ document.getElementById('login-btn').addEventListener('click',doLogin);
 document.getElementById('secret-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 prefillDevSecret();
 
+async function restoreSession(){
+  try {
+    await apiFetch('/admin/stats');
+    HAS_SESSION=true;
+    initApp();
+  } catch {
+    HAS_SESSION=false;
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
@@ -559,12 +556,12 @@ function initApp(){
     new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const apiDisplay=API||window.location.origin;
   document.getElementById('sys-api-url').textContent=apiDisplay;
-  document.getElementById('sys-token').textContent=TOKEN?TOKEN.slice(0,24)+'…':'—';
+  document.getElementById('sys-token').textContent='Cookie httpOnly';
   loadDashboard();
   // Pré-charger le badge monitoring en arrière-plan
   loadMonitoringBadge();
 }
-if(TOKEN) initApp();
+restoreSession();
 
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
