@@ -1,5 +1,7 @@
 ﻿const fs = require('fs');
 
+const crypto = require('crypto');
+
 function loadEnvFile(file = '.env') {
   if (!fs.existsSync(file)) return;
   fs.readFileSync(file, 'utf8').split(/\r?\n/).forEach((line) => {
@@ -91,6 +93,9 @@ assertStrongSecret('ADMIN_SECRET', ADMIN_SECRET, DEFAULT_ADMIN_SECRET);
 const app = express();
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const IS_PROD = process.env.NODE_ENV === 'production';
+const REQUIRE_SIGNUP_OTP = process.env.REQUIRE_SIGNUP_OTP
+  ? String(process.env.REQUIRE_SIGNUP_OTP).toLowerCase() === 'true'
+  : IS_PROD;
 
 function authCookieOptions() {
   return {
@@ -108,6 +113,29 @@ function setAuthCookie(res, token) {
 
 function clearAuthCookie(res) {
   res.clearCookie('fe_token', { ...authCookieOptions(), maxAge: undefined });
+}
+
+function backofficeBasicAuth(req, res, next) {
+  const user = process.env.BACKOFFICE_BASIC_USER || '';
+  const pass = process.env.BACKOFFICE_BASIC_PASS || '';
+  if (!user || !pass) return next();
+
+  const header = req.headers.authorization || '';
+  const match = header.match(/^Basic\s+(.+)$/i);
+  if (match) {
+    const decoded = Buffer.from(match[1], 'base64').toString('utf8');
+    const sep = decoded.indexOf(':');
+    const givenUser = sep >= 0 ? decoded.slice(0, sep) : '';
+    const givenPass = sep >= 0 ? decoded.slice(sep + 1) : '';
+    if (givenUser.length === user.length && givenPass.length === pass.length) {
+      const userOk = crypto.timingSafeEqual(Buffer.from(givenUser), Buffer.from(user));
+      const passOk = crypto.timingSafeEqual(Buffer.from(givenPass), Buffer.from(pass));
+      if (userOk && passOk) return next();
+    }
+  }
+
+  res.setHeader('WWW-Authenticate', 'Basic realm="FacturEasy Backoffice"');
+  return res.status(401).send('Authentification backoffice requise');
 }
 
 // Headers de sécurité minimum même si helmet n'est pas installé
@@ -448,6 +476,35 @@ app.post('/auth/login', async (req, res) => {
     let entreprise;
 
     if (!existing.rows[0]) {
+      if (REQUIRE_SIGNUP_OTP) {
+        const signupCode = sanitizeText(req.body.signup_code || req.body.code, 12);
+        if (!/^\d{6}$/.test(signupCode || '')) {
+          const code = String(Math.floor(100000 + Math.random() * 900000));
+          await pool.query(
+            `INSERT INTO auth_otps (siret, email, code_hash, expires_at)
+             VALUES ($1,$2,$3,NOW() + INTERVAL '10 minutes')`,
+            [siret, email, hashPassword(code)]
+          );
+          await require('./services/mailer').sendOtp(email, { code });
+          return res.status(202).json({
+            codeRequired: true,
+            action: 'verify_signup',
+            message: 'Code de vérification envoyé par email. Saisissez-le pour créer le compte.',
+          });
+        }
+
+        const otp = await pool.query(
+          `SELECT * FROM auth_otps
+           WHERE siret = $1 AND email = $2 AND used_at IS NULL AND expires_at > NOW()
+           ORDER BY created_at DESC LIMIT 1`,
+          [siret, email]
+        );
+        if (!otp.rows[0] || !verifyPassword(signupCode, otp.rows[0].code_hash)) {
+          return res.status(401).json({ error: 'Code de vérification invalide ou expiré' });
+        }
+        await pool.query('UPDATE auth_otps SET used_at = NOW() WHERE id = $1', [otp.rows[0].id]);
+      }
+
       const passwordHash = hashPassword(password);
       const created = await pool.query(
         `INSERT INTO entreprises (siret, nom, email, password_hash)
@@ -904,7 +961,7 @@ app.use('/auth', comptableRouter);
 // ─── Backoffice admin (fichier statique servi depuis /backoffice/) ─────────────
 // Accessible à : https://factureasy-backend.onrender.com/backoffice/
 // ⚠️  Les fichiers admin sont dans backend/public/backoffice/ (dans le build context Docker)
-app.use('/backoffice', express.static(path.join(__dirname, 'public/backoffice')));
+app.use('/backoffice', backofficeBasicAuth, express.static(path.join(__dirname, 'public/backoffice')));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 

@@ -43,6 +43,44 @@ const PRICE_MAP = {
   business: process.env.STRIPE_PRICE_BUSINESS || '',
 };
 
+let webhookEventsTableReady = false;
+
+async function ensureWebhookEventsTable() {
+  if (webhookEventsTableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+      event_id TEXT PRIMARY KEY,
+      event_type TEXT,
+      status TEXT NOT NULL DEFAULT 'processing',
+      received_at TIMESTAMPTZ DEFAULT NOW(),
+      processed_at TIMESTAMPTZ,
+      error_message TEXT
+    )
+  `);
+  webhookEventsTableReady = true;
+}
+
+async function lockWebhookEvent(event) {
+  await ensureWebhookEventsTable();
+  const { rows } = await pool.query(
+    `INSERT INTO stripe_webhook_events (event_id, event_type)
+     VALUES ($1, $2)
+     ON CONFLICT (event_id) DO NOTHING
+     RETURNING event_id`,
+    [event.id, event.type]
+  );
+  return Boolean(rows[0]);
+}
+
+async function markWebhookEvent(eventId, status, errorMessage = null) {
+  await pool.query(
+    `UPDATE stripe_webhook_events
+     SET status = $2, processed_at = NOW(), error_message = $3
+     WHERE event_id = $1`,
+    [eventId, status, errorMessage ? String(errorMessage).slice(0, 500) : null]
+  );
+}
+
 // ─── Helper : appel Stripe API (sans SDK — zéro dépendance externe) ───────────
 function stripeRequest(method, path, data = null) {
   return new Promise((resolve, reject) => {
@@ -228,6 +266,7 @@ async function handleStripeWebhook(req, res) {
   try {
     verifyStripeSignature(req.body.toString(), sig, STRIPE_WEBHOOK_SECRET);
     event = JSON.parse(req.body.toString());
+    if (!event.id) return res.status(400).json({ error: 'Event Stripe sans id' });
   } catch (err) {
     console.error('[stripe/webhook] Signature invalide :', err.message);
     return res.status(400).json({ error: err.message });
@@ -236,6 +275,9 @@ async function handleStripeWebhook(req, res) {
   const obj = event.data?.object;
 
   try {
+    const firstSeen = await lockWebhookEvent(event);
+    if (!firstSeen) return res.json({ received: true, duplicate: true });
+
     switch (event.type) {
 
       // ── Checkout réussi → enregistrer subscription + plan ────────────────────
@@ -318,8 +360,12 @@ async function handleStripeWebhook(req, res) {
       default:
         console.log(`[stripe/webhook] Événement ignoré : ${event.type}`);
     }
+    await markWebhookEvent(event.id, 'processed');
   } catch (err) {
     console.error('[stripe/webhook] Erreur traitement :', err.message);
+    if (event?.id) {
+      try { await markWebhookEvent(event.id, 'error', err.message); } catch (_) {}
+    }
     // On retourne quand même 200 pour éviter que Stripe ne re-tente
   }
 

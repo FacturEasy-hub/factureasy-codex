@@ -299,6 +299,7 @@ function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
+  const [signupVerification, setSignupVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -329,11 +330,15 @@ function LoginScreen({ onLogin }) {
       setError('Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
+    if (signupVerification && !/^\d{6}$/.test(otpCode)) {
+      setError('Code à 6 chiffres requis.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await apiCall('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ siret, nom, email: email.trim(), password }),
+        body: JSON.stringify({ siret, nom, email: email.trim(), password, signup_code: signupVerification ? otpCode : undefined }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -342,6 +347,13 @@ function LoginScreen({ onLogin }) {
         return;
       }
       const errData = await res.json().catch(() => ({}));
+      if (res.status === 202 && errData.codeRequired) {
+        setSignupVerification(true);
+        setOtpRequested(true);
+        setInfo(errData.message || 'Code envoyé par email. Saisissez-le pour créer le compte.');
+        setLoading(false);
+        return;
+      }
       setError(errData.error || 'Connexion refusée. Vérifiez votre SIRET.');
     } catch {
       setError('Impossible de joindre le serveur. Vérifiez votre connexion.');
@@ -362,6 +374,7 @@ function LoginScreen({ onLogin }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Impossible d’envoyer le code');
+      setSignupVerification(false);
       setOtpRequested(true);
       setInfo(data.message || 'Code envoyé par email. Vérifiez aussi vos spams.');
     } catch (e) {
@@ -519,12 +532,12 @@ function LoginScreen({ onLogin }) {
               marginTop: 8,
             }}
           >
-            {loading ? 'Connexion…' : 'Créer / accéder à mon espace client →'}
+            {loading ? 'Connexion…' : signupVerification ? 'Valider et créer mon compte →' : 'Créer / accéder à mon espace client →'}
           </button>
           <button
             type="button"
             disabled={loading}
-            onClick={otpRequested ? verifyOtp : requestOtp}
+            onClick={otpRequested && !signupVerification ? verifyOtp : requestOtp}
             style={{
               width: '100%',
               padding: '12px',
@@ -539,7 +552,7 @@ function LoginScreen({ onLogin }) {
               marginTop: 10,
             }}
           >
-            {otpRequested ? 'Valider le code email' : 'Recevoir un code email (compte existant)'}
+            {otpRequested && !signupVerification ? 'Valider le code email' : 'Recevoir un code email (compte existant)'}
           </button>
         </form>
         <p style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 24 }}>
