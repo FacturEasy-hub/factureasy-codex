@@ -354,6 +354,11 @@ function LoginScreen({ onLogin }) {
         setLoading(false);
         return;
       }
+      if (res.status === 403 && errData.signupDisabled) {
+        setError(errData.error || 'Compte non créé. Contactez FacturEasy pour activer votre accès.');
+        setLoading(false);
+        return;
+      }
       setError(errData.error || 'Connexion refusée. Vérifiez votre SIRET.');
     } catch {
       setError('Impossible de joindre le serveur. Vérifiez votre connexion.');

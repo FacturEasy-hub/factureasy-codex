@@ -96,6 +96,9 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 const REQUIRE_SIGNUP_OTP = process.env.REQUIRE_SIGNUP_OTP
   ? String(process.env.REQUIRE_SIGNUP_OTP).toLowerCase() === 'true'
   : IS_PROD;
+const PUBLIC_SIGNUP_ENABLED = process.env.PUBLIC_SIGNUP_ENABLED
+  ? String(process.env.PUBLIC_SIGNUP_ENABLED).toLowerCase() === 'true'
+  : !IS_PROD;
 
 function authCookieOptions() {
   return {
@@ -476,6 +479,13 @@ app.post('/auth/login', async (req, res) => {
     let entreprise;
 
     if (!existing.rows[0]) {
+      if (!PUBLIC_SIGNUP_ENABLED) {
+        return res.status(403).json({
+          error: 'Compte non créé. Demandez une invitation ou contactez l’administrateur FacturEasy.',
+          signupDisabled: true,
+        });
+      }
+
       if (REQUIRE_SIGNUP_OTP) {
         const signupCode = sanitizeText(req.body.signup_code || req.body.code, 12);
         if (!/^\d{6}$/.test(signupCode || '')) {
