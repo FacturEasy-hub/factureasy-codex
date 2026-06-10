@@ -300,6 +300,15 @@ function LoginScreen({ onLogin }) {
   const [otpCode, setOtpCode] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const [signupVerification, setSignupVerification] = useState(false);
+  const [showAccessRequest, setShowAccessRequest] = useState(false);
+  const [accessForm, setAccessForm] = useState({
+    contact_nom: '',
+    telephone: '',
+    tva_regime: 'reel_normal',
+    activite_type: 'services',
+    domaine: '',
+    message: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -356,6 +365,7 @@ function LoginScreen({ onLogin }) {
       }
       if (res.status === 403 && errData.signupDisabled) {
         setError(errData.error || 'Compte non créé. Contactez FacturEasy pour activer votre accès.');
+        setShowAccessRequest(true);
         setLoading(false);
         return;
       }
@@ -406,6 +416,34 @@ function LoginScreen({ onLogin }) {
       setError(e.message || 'Impossible de vérifier le code.');
       setLoading(false);
     }
+  };
+
+  const submitAccessRequest = async (e) => {
+    e.preventDefault();
+    setError('');
+    setInfo('');
+    if (siret.length !== 14 || !/^\d{14}$/.test(siret)) return setError('Le SIRET doit contenir exactement 14 chiffres.');
+    if (!nom.trim()) return setError("Le nom de l'entreprise est requis.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setError('Un email professionnel valide est requis.');
+    setLoading(true);
+    try {
+      const res = await apiCall('/access-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          siret,
+          nom,
+          email: email.trim(),
+          ...accessForm,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Demande impossible pour le moment.');
+      setInfo(data.message || 'Demande reçue. Nous vérifions votre société avant activation.');
+      setShowAccessRequest(false);
+    } catch (e) {
+      setError(e.message || 'Impossible de joindre le serveur.');
+    }
+    setLoading(false);
   };
 
   return (
@@ -518,6 +556,86 @@ function LoginScreen({ onLogin }) {
               }}
             >
               {info}
+            </div>
+          )}
+          {showAccessRequest && (
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>Demander l'activation</div>
+              <Field label="Contact principal">
+                <input
+                  style={inputStyle}
+                  type="text"
+                  value={accessForm.contact_nom}
+                  onChange={(e) => setAccessForm({ ...accessForm, contact_nom: e.target.value })}
+                />
+              </Field>
+              <Field label="Téléphone">
+                <input
+                  style={inputStyle}
+                  type="tel"
+                  value={accessForm.telephone}
+                  onChange={(e) => setAccessForm({ ...accessForm, telephone: e.target.value })}
+                />
+              </Field>
+              <Field label="Régime TVA">
+                <select
+                  style={inputStyle}
+                  value={accessForm.tva_regime}
+                  onChange={(e) => setAccessForm({ ...accessForm, tva_regime: e.target.value })}
+                >
+                  <option value="reel_normal">Réel normal</option>
+                  <option value="reel_simplifie">Réel simplifié</option>
+                  <option value="franchise">Franchise en base</option>
+                  <option value="non_assujetti">Non assujetti</option>
+                </select>
+              </Field>
+              <Field label="Activité">
+                <select
+                  style={inputStyle}
+                  value={accessForm.activite_type}
+                  onChange={(e) => setAccessForm({ ...accessForm, activite_type: e.target.value })}
+                >
+                  <option value="services">Services</option>
+                  <option value="commerce">Commerce</option>
+                  <option value="btp_leger">BTP léger</option>
+                  <option value="profession_liberale">Profession libérale</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </Field>
+              <Field label="Domaine / besoin">
+                <input
+                  style={inputStyle}
+                  type="text"
+                  value={accessForm.domaine}
+                  onChange={(e) => setAccessForm({ ...accessForm, domaine: e.target.value })}
+                  placeholder="Ex : conseil, agence, santé..."
+                />
+              </Field>
+              <textarea
+                style={{ ...inputStyle, minHeight: 82, resize: 'vertical' }}
+                value={accessForm.message}
+                onChange={(e) => setAccessForm({ ...accessForm, message: e.target.value })}
+                placeholder="Message optionnel"
+              />
+              <button
+                type="button"
+                disabled={loading}
+                onClick={submitAccessRequest}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#0f172a',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                Envoyer ma demande
+              </button>
             </div>
           )}
           <button

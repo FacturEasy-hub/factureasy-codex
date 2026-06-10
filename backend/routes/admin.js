@@ -26,6 +26,29 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+async function ensureAccessRequestsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS access_requests (
+      id SERIAL PRIMARY KEY,
+      siret VARCHAR(14) NOT NULL,
+      nom VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      contact_nom VARCHAR(255),
+      contact_telephone VARCHAR(50),
+      tva_regime VARCHAR(50),
+      activite_type VARCHAR(50),
+      domaine VARCHAR(255),
+      message TEXT,
+      status VARCHAR(30) DEFAULT 'pending',
+      reviewed_at TIMESTAMPTZ,
+      reviewed_by TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_access_requests_siret ON access_requests(siret);
+  `);
+}
+
 // =============================================================================
 // GET /admin/stats — statistiques globales de la plateforme
 // =============================================================================
@@ -66,6 +89,60 @@ router.get('/stats', requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('[admin/stats]', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// =============================================================================
+// GET /admin/access-requests — demandes d'accès client à vérifier
+// =============================================================================
+router.get('/access-requests', requireAdmin, async (req, res) => {
+  try {
+    await ensureAccessRequestsTable();
+    const status = sanitizeText(req.query.status || '', 30);
+    const limit = Math.min(parseInt(req.query.limit || '50', 10) || 50, 100);
+    const params = [];
+    let where = '';
+    if (status) {
+      params.push(status);
+      where = `WHERE status = $${params.length}`;
+    }
+    params.push(limit);
+    const { rows } = await pool.query(
+      `SELECT *
+       FROM access_requests
+       ${where}
+       ORDER BY created_at DESC
+       LIMIT $${params.length}`,
+      params
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    console.error('[admin/access-requests]', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/access-requests/:id', requireAdmin, async (req, res) => {
+  try {
+    await ensureAccessRequestsTable();
+    const id = parseInt(req.params.id, 10);
+    const status = sanitizeText(req.body.status || '', 30);
+    if (!id) return res.status(400).json({ error: 'ID invalide' });
+    if (!['pending', 'approved', 'rejected', 'contacted'].includes(status)) {
+      return res.status(400).json({ error: 'Statut invalide' });
+    }
+    const { rows } = await pool.query(
+      `UPDATE access_requests
+       SET status = $2, reviewed_at = NOW(), reviewed_by = $3
+       WHERE id = $1
+       RETURNING *`,
+      [id, status, req.user?.email || 'admin']
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Demande introuvable' });
+    res.json({ ok: true, request: rows[0] });
+  } catch (err) {
+    console.error('[admin/access-requests/:id]', err.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

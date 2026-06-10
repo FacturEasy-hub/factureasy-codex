@@ -118,6 +118,29 @@ function clearAuthCookie(res) {
   res.clearCookie('fe_token', { ...authCookieOptions(), maxAge: undefined });
 }
 
+async function ensureAccessRequestsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS access_requests (
+      id SERIAL PRIMARY KEY,
+      siret VARCHAR(14) NOT NULL,
+      nom VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      contact_nom VARCHAR(255),
+      contact_telephone VARCHAR(50),
+      tva_regime VARCHAR(50),
+      activite_type VARCHAR(50),
+      domaine VARCHAR(255),
+      message TEXT,
+      status VARCHAR(30) DEFAULT 'pending',
+      reviewed_at TIMESTAMPTZ,
+      reviewed_by TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_access_requests_siret ON access_requests(siret);
+  `);
+}
+
 function backofficeBasicAuth(req, res, next) {
   const user = process.env.BACKOFFICE_BASIC_USER || '';
   const pass = process.env.BACKOFFICE_BASIC_PASS || '';
@@ -242,6 +265,25 @@ app.get('/init-db', requireAdmin, async (req, res) => {
         ALTER TABLE entreprises ADD COLUMN IF NOT EXISTS updated_at             TIMESTAMP DEFAULT NOW();
       EXCEPTION WHEN duplicate_column THEN NULL;
       END $$;
+
+      CREATE TABLE IF NOT EXISTS access_requests (
+        id                SERIAL PRIMARY KEY,
+        siret             VARCHAR(14) NOT NULL,
+        nom               VARCHAR(255) NOT NULL,
+        email             VARCHAR(255) NOT NULL,
+        contact_nom       VARCHAR(255),
+        contact_telephone VARCHAR(50),
+        tva_regime        VARCHAR(50),
+        activite_type     VARCHAR(50),
+        domaine           VARCHAR(255),
+        message           TEXT,
+        status            VARCHAR(30) DEFAULT 'pending',
+        reviewed_at       TIMESTAMPTZ,
+        reviewed_by       TEXT,
+        created_at        TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status, created_at);
+      CREATE INDEX IF NOT EXISTS idx_access_requests_siret ON access_requests(siret);
 
       CREATE TABLE IF NOT EXISTS factures (
         id                    SERIAL PRIMARY KEY,
@@ -461,6 +503,61 @@ app.get('/init-db', requireAdmin, async (req, res) => {
 });
 
 // ─── Authentification ────────────────────────────────────────────────────────
+
+app.post('/access-requests', async (req, res) => {
+  try {
+    const siret = sanitizeText(req.body.siret, 14);
+    const nom = sanitizeText(req.body.nom, 255);
+    const email = normalizeEmail(req.body.email);
+    const contactNom = sanitizeText(req.body.contact_nom || '', 255);
+    const contactTelephone = sanitizeText(req.body.contact_telephone || req.body.telephone || '', 50);
+    const tvaRegime = normalizeFromSet(req.body.tva_regime, TVA_REGIMES, 'reel_normal');
+    const activiteType = normalizeFromSet(req.body.activite_type, ACTIVITY_TYPES, 'services');
+    const domaine = sanitizeText(req.body.domaine || '', 255);
+    const message = sanitizeText(req.body.message || '', 2000);
+
+    if (!validateSiret(siret)) return res.status(400).json({ error: 'SIRET invalide — 14 chiffres attendus' });
+    if (!nom) return res.status(400).json({ error: 'Nom entreprise requis' });
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Email professionnel valide requis' });
+
+    await ensureAccessRequestsTable();
+    const existingCompany = await pool.query('SELECT id FROM entreprises WHERE siret = $1', [siret]);
+    if (existingCompany.rows[0]) return res.status(409).json({ error: 'Un espace existe déjà pour ce SIRET. Utilisez la connexion client.' });
+
+    const duplicate = await pool.query(
+      `SELECT id FROM access_requests
+       WHERE siret = $1 AND email = $2 AND status = 'pending' AND created_at > NOW() - INTERVAL '24 hours'
+       ORDER BY created_at DESC LIMIT 1`,
+      [siret, email]
+    );
+    if (duplicate.rows[0]) return res.json({ ok: true, duplicate: true, message: 'Demande déjà reçue. Nous revenons vers vous rapidement.' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO access_requests (
+         siret, nom, email, contact_nom, contact_telephone, tva_regime, activite_type, domaine, message
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       RETURNING id, siret, nom, email, status, created_at`,
+      [siret, nom, email, contactNom || null, contactTelephone || null, tvaRegime, activiteType, domaine || null, message || null]
+    );
+
+    if (process.env.ADMIN_NOTIFY_EMAIL) {
+      try {
+        await require('./services/mailer').sendAccessRequest(process.env.ADMIN_NOTIFY_EMAIL, {
+          siret, nom, email, contact_nom: contactNom, contact_telephone: contactTelephone, tva_regime: tvaRegime, activite_type: activiteType, domaine, message,
+        });
+      } catch (mailErr) {
+        console.warn('[access-requests mail]', mailErr.message);
+      }
+    }
+
+    res.status(201).json({ ok: true, request: rows[0], message: 'Demande reçue. FacturEasy va vérifier votre société avant activation.' });
+  } catch (err) {
+    const safe = safeError(err);
+    console.error('[POST /access-requests]', err.message);
+    res.status(safe.status).json({ error: safe.message });
+  }
+});
 
 // POST /auth/login — crée ou récupère une entreprise et retourne un JWT
 app.post('/auth/login', async (req, res) => {

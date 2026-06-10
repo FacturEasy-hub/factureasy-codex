@@ -130,6 +130,35 @@ function tplOtp({ code }) {
   };
 }
 
+function tplAccessRequest(data = {}) {
+  const fields = [
+    ['Entreprise', data.nom],
+    ['SIRET', data.siret],
+    ['Email', data.email],
+    ['Contact', data.contact_nom],
+    ['Téléphone', data.contact_telephone],
+    ['TVA', data.tva_regime],
+    ['Activité', data.activite_type],
+    ['Domaine', data.domaine],
+  ];
+  return {
+    subject: `Nouvelle demande d'accès FacturEasy — ${data.nom || data.siret}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:620px;margin:0 auto;color:#1a1a1a">
+        <div style="background:#185FA5;padding:22px 26px;border-radius:8px 8px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:20px">FacturEasy</h1>
+        </div>
+        <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;padding:26px;border-radius:0 0 8px 8px">
+          <h2 style="font-size:17px;margin:0 0 16px">Nouvelle demande d'accès client</h2>
+          <table style="width:100%;font-size:14px;border-collapse:collapse">
+            ${fields.map(([label, value]) => `<tr><td style="padding:8px 0;color:#6B7280;border-bottom:1px solid #F3F4F6">${escapeHtml(label)}</td><td style="padding:8px 0;border-bottom:1px solid #F3F4F6">${escapeHtml(value || '-')}</td></tr>`).join('')}
+          </table>
+          ${data.message ? `<p style="font-size:14px;line-height:1.6;margin-top:18px;white-space:pre-wrap">${escapeHtml(data.message)}</p>` : ''}
+        </div>
+      </div>`
+  };
+}
+
 // ─── Fonction d'envoi générique ───────────────────────────────────────────────
 
 async function sendMail(to, { subject, html }) {
@@ -166,4 +195,5 @@ module.exports = {
   sendFactureRejetee: (to, data) => sendMail(to, tplFactureRejetee(data)),
   sendBienvenue:      (to, data) => sendMail(to, tplBienvenue(data)),
   sendOtp:            (to, data) => sendMail(to, tplOtp(data)),
+  sendAccessRequest:  (to, data) => sendMail(to, tplAccessRequest(data)),
 };
