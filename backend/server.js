@@ -1018,7 +1018,7 @@ app.get('/stats/:siret', authenticate, async (req, res) => {
 // POST /auth/admin — authentification administrateur
 // Body: { secret: "ADMIN_SECRET" }
 app.post('/auth/admin', (req, res) => {
-  const { secret } = req.body;
+  const { secret } = req.body || {};
   if (!secret || secret !== ADMIN_SECRET) {
     return res.status(401).json({ error: 'Secret administrateur invalide' });
   }

@@ -490,6 +490,12 @@ describe('JWT invalide', function() {
 // ADMIN
 
 describe('Routes /admin - controle acces', function() {
+  it('POST /auth/admin -> 401 si body vide, pas 500', async function() {
+    var res = await request(app).post('/auth/admin');
+    expect(res.status).toBe(401);
+    expect(res.body).toHaveProperty('error');
+  });
+
   it('GET /admin/stats -> 401 sans token', async function() {
     var res = await request(app).get('/admin/stats');
     expect(res.status).toBe(401);
