@@ -303,6 +303,32 @@ tbody tr:hover td{background:#12141f}
       </div>
 
       <!-- ═══ FACTURES ═══ -->
+      <div id="section-demandes" class="section">
+        <div class="page-title">Demandes clients</div>
+        <div class="page-sub">Nouveaux clients a verifier avant creation de compte</div>
+        <div id="err-demandes"></div>
+        <div id="ok-demandes"></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Demandes d'acces</span><span class="card-count" id="dmd-count"></span></div>
+          <div class="filters">
+            <select id="dmd-status" class="f-sel" onchange="loadDemandes()">
+              <option value="pending">En attente</option>
+              <option value="">Toutes</option>
+              <option value="contacted">Contacte</option>
+              <option value="approved">Approuve</option>
+              <option value="rejected">Refuse</option>
+            </select>
+            <button class="f-btn" onclick="loadDemandes()">Actualiser</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Entreprise</th><th>Contact</th><th>Infos</th><th>Statut</th><th>Demande</th><th>Actions</th></tr></thead>
+              <tbody id="dmd-tbody"><tr><td colspan="6" class="state-loading"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div id="section-factures" class="section">
         <div class="page-title">Factures</div>
         <div class="page-sub">Toutes les factures de la plateforme</div>
@@ -409,6 +435,7 @@ const API = window.location.origin;
 
 let HAS_SESSION = false;
 let pageEnt=1, pageFact=1, pageSub=1;
+let demandesNavReady=false;
 const DEV_ADMIN_SECRET = 'factureasy-admin-change-in-prod';
 
 function prefillDevSecret(){
@@ -464,6 +491,12 @@ const planBadge = (plan) => {
 const statutBadge = (s) => {
   const m={EMISE:'b-blue',EN_COURS:'b-orange',ACCEPTEE:'b-green',REJETEE:'b-red'};
   return `<span class="badge ${m[s]||'b-gray'}">${esc(s||'—')}</span>`;
+};
+
+const requestStatusBadge = (s) => {
+  const m={pending:['b-amber','En attente'],contacted:['b-blue','Contacte'],approved:['b-green','Approuve'],rejected:['b-red','Refuse']};
+  const v=m[s]||['b-gray',s||'-'];
+  return `<span class="badge ${v[0]}">${esc(v[1])}</span>`;
 };
 
 function setErr(id,msg) {
@@ -552,6 +585,7 @@ async function restoreSession(){
 function initApp(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
+  setupDemandesNav();
   document.getElementById('topbar-date').textContent=
     new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const apiDisplay=API||window.location.origin;
@@ -560,8 +594,22 @@ function initApp(){
   loadDashboard();
   // Pré-charger le badge monitoring en arrière-plan
   loadMonitoringBadge();
+  loadDemandesBadge();
 }
 restoreSession();
+
+function setupDemandesNav(){
+  if(demandesNavReady) return;
+  const entreprisesBtn=document.querySelector('[data-section="entreprises"]');
+  if(!entreprisesBtn) return;
+  const btn=document.createElement('button');
+  btn.className='nav-item';
+  btn.dataset.section='demandes';
+  btn.onclick=function(){ navTo('demandes',btn); };
+  btn.innerHTML='<span>+</span> Demandes <span class="nav-badge" id="badge-demandes" style="display:none">0</span>';
+  entreprisesBtn.insertAdjacentElement('afterend',btn);
+  demandesNavReady=true;
+}
 
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
@@ -571,7 +619,7 @@ function navTo(name,btn){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('section-'+name).classList.add('active');
   if(btn) btn.classList.add('active');
-  const loaders={entreprises:()=>loadEntreprises(1),factures:()=>loadFactures(1),
+  const loaders={entreprises:()=>loadEntreprises(1),demandes:loadDemandes,factures:()=>loadFactures(1),
                  abonnements:()=>loadAbonnements(1),revenue:loadRevenue,monitoring:loadMonitoring};
   if(loaders[name]) loaders[name]();
 }
@@ -579,6 +627,53 @@ function navTo(name,btn){
 // ═══════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════
+async function loadDemandesBadge(){
+  try{
+    const d=await apiFetch('/admin/access-requests?status=pending&limit=100');
+    const n=d.data?.length||0;
+    const b=document.getElementById('badge-demandes');
+    if(b){ b.textContent=n; b.style.display=n?'inline-block':'none'; }
+  }catch(_){}
+}
+
+async function loadDemandes(){
+  setErr('err-demandes',''); setOk('ok-demandes','');
+  const body=document.getElementById('dmd-tbody');
+  if(!body) return;
+  body.innerHTML=`<tr><td colspan="6" class="state-loading"><div class="spinner"></div></td></tr>`;
+  try{
+    const status=document.getElementById('dmd-status')?.value||'';
+    const d=await apiFetch(`/admin/access-requests?limit=100${status?`&status=${encodeURIComponent(status)}`:''}`);
+    const rows=d.data||[];
+    document.getElementById('dmd-count').textContent=`${rows.length} demande(s)`;
+    body.innerHTML=rows.length?rows.map(r=>`
+      <tr>
+        <td><div class="t-strong">${esc(r.nom)}</div><div class="mono t-muted">${esc(r.siret)}</div></td>
+        <td><div>${esc(r.contact_nom||'-')}</div><div class="t-muted">${esc(r.email)}</div><div class="t-muted">${esc(r.contact_telephone||'')}</div></td>
+        <td><div>${esc(r.activite_type||'-')} / ${esc(r.tva_regime||'-')}</div><div class="t-muted">${esc(r.domaine||'')}</div><div class="t-muted">${esc(r.message||'')}</div></td>
+        <td>${requestStatusBadge(r.status)}</td>
+        <td class="t-muted">${dt(r.created_at)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn-sm" onclick="updateAccessRequest(${r.id},'contacted')">Contacte</button>
+          <button class="btn-sm btn-ok" onclick="updateAccessRequest(${r.id},'approved')">OK</button>
+          <button class="btn-sm btn-del" onclick="updateAccessRequest(${r.id},'rejected')">Refus</button>
+        </td>
+      </tr>`).join(''):`<tr><td colspan="6" class="state-empty">Aucune demande</td></tr>`;
+    loadDemandesBadge();
+  }catch(err){
+    setErr('err-demandes',err.message);
+    body.innerHTML=`<tr><td colspan="6" class="state-empty">Erreur</td></tr>`;
+  }
+}
+
+async function updateAccessRequest(id,status){
+  try{
+    await apiFetch(`/admin/access-requests/${id}`,{method:'PATCH',body:JSON.stringify({status})});
+    setOk('ok-demandes','Statut mis a jour');
+    loadDemandes();
+  }catch(err){ setErr('err-demandes',err.message); }
+}
+
 async function loadDashboard(){
   setErr('err-dashboard','');
   document.getElementById('kpi-dash').innerHTML=`<div class="state-loading"><div class="spinner"></div></div>`;
