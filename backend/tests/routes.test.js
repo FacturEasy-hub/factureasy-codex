@@ -506,6 +506,15 @@ describe('Routes /admin - controle acces', function() {
     expect(res.body).toHaveProperty('error', 'JSON invalide');
   });
 
+  it('POST /auth/admin -> 200 avec secret admin valide', async function() {
+    var res = await request(app)
+      .post('/auth/admin')
+      .send({ secret: process.env.ADMIN_SECRET });
+    expect(res.status).toBe(200);
+    expect(res.body.role).toBe('admin');
+    expect((res.headers['set-cookie'] || []).join(';')).toContain('HttpOnly');
+  });
+
   it('GET /admin/stats -> 401 sans token', async function() {
     var res = await request(app).get('/admin/stats');
     expect(res.status).toBe(401);

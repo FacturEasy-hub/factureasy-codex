@@ -1024,13 +1024,18 @@ app.get('/stats/:siret', authenticate, async (req, res) => {
 // POST /auth/admin — authentification administrateur
 // Body: { secret: "ADMIN_SECRET" }
 app.post('/auth/admin', (req, res) => {
-  const { secret } = req.body || {};
-  if (!secret || secret !== ADMIN_SECRET) {
-    return res.status(401).json({ error: 'Secret administrateur invalide' });
+  try {
+    const { secret } = req.body || {};
+    if (!secret || secret !== ADMIN_SECRET) {
+      return res.status(401).json({ error: 'Secret administrateur invalide' });
+    }
+    const token = generateToken({ role: 'admin', email: 'admin@factureasy.fr' });
+    setAuthCookie(res, token);
+    return res.json({ token, role: 'admin' });
+  } catch (err) {
+    console.error('[auth/admin]', err.message);
+    return res.status(500).json({ error: 'Connexion admin impossible. Verifiez JWT_SECRET et ADMIN_SECRET sur Render.' });
   }
-  const token = generateToken({ role: 'admin', email: 'admin@factureasy.fr' });
-  setAuthCookie(res, token);
-  res.json({ token, role: 'admin' });
 });
 
 // ─── Routes Admin ─────────────────────────────────────────────────────────────
@@ -1083,6 +1088,15 @@ app.get('/health', (req, res) => res.json({
   ts: new Date().toISOString(),
   chorus: chorusClient.publicConfig(),
 }));
+
+app.use((err, req, res, next) => {
+  if (err.message && err.message.startsWith('Origin non autorisée par CORS')) {
+    return res.status(403).json({ error: 'Origine non autorisee' });
+  }
+  console.error('[unhandled]', err.message);
+  if (res.headersSent) return next(err);
+  return res.status(500).json({ error: 'Erreur serveur' });
+});
 
 // --- Lancement ---
 
