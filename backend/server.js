@@ -98,7 +98,7 @@ const REQUIRE_SIGNUP_OTP = process.env.REQUIRE_SIGNUP_OTP
   : IS_PROD;
 const PUBLIC_SIGNUP_ENABLED = process.env.PUBLIC_SIGNUP_ENABLED
   ? String(process.env.PUBLIC_SIGNUP_ENABLED).toLowerCase() === 'true'
-  : !IS_PROD;
+  : true;
 
 function authCookieOptions() {
   return {
