@@ -202,10 +202,22 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS)
   .split(',')
   .map(o => o.trim().replace(/\/$/, ''))
   .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const cleanOrigin = origin.replace(/\/$/, '');
+  if (ALLOWED_ORIGINS.includes(cleanOrigin)) return true;
+  try {
+    const { protocol, hostname } = new URL(cleanOrigin);
+    return protocol === 'https:' && /^factureasy-codex(-[a-z0-9-]+)?\.vercel\.app$/i.test(hostname);
+  } catch (_) {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: function(origin, cb) {
-    if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.includes(origin.replace(/\/$/, ''))) return cb(null, true);
+    if (isAllowedOrigin(origin)) return cb(null, true);
     cb(new Error('Origin non autorisée par CORS : ' + origin));
   },
   credentials: true,

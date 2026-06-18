@@ -739,6 +739,22 @@ describe('Middleware readOnly (role comptable)', function() {
 });
 
 describe('CORS', function() {
+  it('autorise le domaine Vercel principal', async function() {
+    var res = await request(app)
+      .options('/health')
+      .set('Origin', 'https://factureasy-codex.vercel.app')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(res.headers['access-control-allow-origin']).toBe('https://factureasy-codex.vercel.app');
+  });
+
+  it('autorise les previews Vercel du projet', async function() {
+    var res = await request(app)
+      .options('/health')
+      .set('Origin', 'https://factureasy-codex-git-main-factureasy-hubs-projects.vercel.app')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(res.headers['access-control-allow-origin']).toBe('https://factureasy-codex-git-main-factureasy-hubs-projects.vercel.app');
+  });
+
   it('refuse une origine Vercel non autorisee', async function() {
     var res = await request(app)
       .options('/health')
