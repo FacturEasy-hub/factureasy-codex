@@ -95,7 +95,7 @@ const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 const REQUIRE_SIGNUP_OTP = process.env.REQUIRE_SIGNUP_OTP
   ? String(process.env.REQUIRE_SIGNUP_OTP).toLowerCase() === 'true'
-  : IS_PROD;
+  : true;
 const PUBLIC_SIGNUP_ENABLED = process.env.PUBLIC_SIGNUP_ENABLED
   ? String(process.env.PUBLIC_SIGNUP_ENABLED).toLowerCase() === 'true'
   : true;

@@ -480,6 +480,13 @@ function LoginScreen({ onLogin }) {
           </p>
         </div>
         <form onSubmit={handleSubmit}>
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#1e3a8a', marginBottom: 6 }}>Creation protegee</div>
+            <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.5 }}>
+              Nouveau compte : un code a 6 chiffres est envoye par email avant activation.
+              La verification societe (SIRET, contact, KBIS optionnel) sera demandee apres creation.
+            </div>
+          </div>
           <Field label="SIRET (14 chiffres)">
             <input
               style={inputStyle}
@@ -655,7 +662,7 @@ function LoginScreen({ onLogin }) {
               marginTop: 8,
             }}
           >
-            {loading ? 'Connexion…' : signupVerification ? 'Valider et créer mon compte →' : 'Créer / accéder à mon espace client →'}
+            {loading ? 'Connexion...' : signupVerification ? 'Valider le code et creer mon compte ->' : 'Creer / acceder a mon espace client ->'}
           </button>
           <button
             type="button"
@@ -675,7 +682,7 @@ function LoginScreen({ onLogin }) {
               marginTop: 10,
             }}
           >
-            {otpRequested && !signupVerification ? 'Valider le code email' : 'Recevoir un code email (compte existant)'}
+            {otpRequested && !signupVerification ? 'Valider le code email' : 'Recevoir un code email'}
           </button>
         </form>
         <p style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 24 }}>

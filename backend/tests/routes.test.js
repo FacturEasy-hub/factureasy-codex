@@ -6,6 +6,7 @@
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'factureasy-test-secret';
 process.env.CHORUS_MOCK = 'true';
+process.env.REQUIRE_SIGNUP_OTP = 'false';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');
