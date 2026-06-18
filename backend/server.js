@@ -209,7 +209,7 @@ function isAllowedOrigin(origin) {
   if (ALLOWED_ORIGINS.includes(cleanOrigin)) return true;
   try {
     const { protocol, hostname } = new URL(cleanOrigin);
-    return protocol === 'https:' && /^factureasy-codex(-[a-z0-9-]+)?\.vercel\.app$/i.test(hostname);
+    return protocol === 'https:' && hostname.endsWith('.vercel.app') && hostname.includes('factureasy');
   } catch (_) {
     return false;
   }

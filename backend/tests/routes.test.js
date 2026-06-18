@@ -755,6 +755,14 @@ describe('CORS', function() {
     expect(res.headers['access-control-allow-origin']).toBe('https://factureasy-codex-git-main-factureasy-hubs-projects.vercel.app');
   });
 
+  it('autorise les autres domaines Vercel FacturEasy', async function() {
+    var res = await request(app)
+      .options('/health')
+      .set('Origin', 'https://factureasy-hubs-projects.vercel.app')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(res.headers['access-control-allow-origin']).toBe('https://factureasy-hubs-projects.vercel.app');
+  });
+
   it('refuse une origine Vercel non autorisee', async function() {
     var res = await request(app)
       .options('/health')
